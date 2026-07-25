@@ -43,14 +43,29 @@
         width: 100%;
         max-width: 400px;
         max-height: 100%; /* 画面内に収める */
-        overflow-y: auto; /* はみ出した場合のみ内部でスクロール */
+        overflow: hidden; /* カード自体はスクロールさせず、内部のリストのみスクロールさせる */
         -webkit-overflow-scrolling: touch;
         box-sizing: border-box;
         display: none; /* JSで表示切り替え */
+        flex-direction: column;
       }
       .card.active {
-        display: block;
+        display: flex;
         animation: fadeIn 0.3s ease-in-out;
+      }
+      h1, p.subtitle, .step-title, button {
+        flex-shrink: 0;
+      }
+      #step-form, #step-confirm-auto, #step-manual-invite, #step-final-execute {
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      #auto-invites-list, #manual-options-list, #final-invites-list {
+        flex: 1;
+        overflow-y: auto;
+        max-height: none !important;
+        min-height: 100px;
       }
       @keyframes fadeIn {
         from {
@@ -732,7 +747,7 @@
           updateAutoInvitesCount();
 
           document.getElementById('step-form').style.display = 'none';
-          document.getElementById('step-confirm-auto').style.display = 'block';
+          document.getElementById('step-confirm-auto').style.display = 'flex';
         } catch (error) {
           showMessage(error.message, false);
         } finally {
@@ -818,7 +833,7 @@
         currentAutoInvites = filteredAutoInvites;
 
         document.getElementById('step-confirm-auto').style.display = 'none';
-        document.getElementById('step-manual-invite').style.display = 'block';
+        document.getElementById('step-manual-invite').style.display = 'flex';
 
         const container = document.getElementById('manual-options-list');
         if (currentManualOptions.length === 0) {
@@ -871,7 +886,7 @@
         }
 
         document.getElementById('step-manual-invite').style.display = 'none';
-        document.getElementById('step-final-execute').style.display = 'block';
+        document.getElementById('step-final-execute').style.display = 'flex';
 
         const finalUsers = [...currentAutoInvites, ...selectedManualInvites];
         
@@ -900,17 +915,18 @@
         document.getElementById('step-manual-invite').style.display = 'none';
         document.getElementById('step-final-execute').style.display = 'none';
         document.getElementById('step-result').style.display = 'none'; // 追加
+        document.getElementById('step-form').style.display = 'flex'; // 追加
         document.getElementById('finalStatusMessage').innerHTML = '';
       }
 
       function backToAutoInvites() {
         document.getElementById('step-manual-invite').style.display = 'none';
-        document.getElementById('step-confirm-auto').style.display = 'block';
+        document.getElementById('step-confirm-auto').style.display = 'flex';
       }
 
       function backToManualInvites() {
         document.getElementById('step-final-execute').style.display = 'none';
-        document.getElementById('step-manual-invite').style.display = 'block';
+        document.getElementById('step-manual-invite').style.display = 'flex';
       }
 
       function showResultScreen(isSuccess, title, desc) {
