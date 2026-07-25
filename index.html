@@ -174,6 +174,54 @@
         border-radius: 50%;
         font-size: 0.85rem;
       }
+      /* Responsive & Layout Updates */
+      .name-text {
+        font-size: 1.15rem;
+        color: #111827;
+      }
+      .invite-item {
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .grid-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+      @media (min-width: 768px) {
+        .card {
+          max-width: 800px;
+          padding: 32px;
+        }
+        .grid-list {
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 12px;
+        }
+        .invite-item {
+          padding: 12px;
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          margin-bottom: 0;
+          border-bottom: 1px solid var(--border-color); /* 上書き */
+        }
+        .invite-item.creator-item {
+          background: #f9fafb;
+          opacity: 0.6;
+        }
+      }
+      @media (max-width: 767px) {
+        body { padding: 0; }
+        .card {
+          border-radius: 0;
+          max-width: 100%;
+          padding: 16px 16px 24px 16px;
+        }
+        h1 { font-size: 1.25rem; margin-top: 8px; }
+        p.subtitle { margin-bottom: 12px; }
+      }
       .spinner {
         display: none;
         width: 20px;
@@ -281,14 +329,13 @@
         </p>
         <div
           id="auto-invites-list"
+          class="grid-list"
           style="
-            max-height: 200px;
-            overflow-y: auto;
+            background: #f9fafb;
             border: 1px solid var(--border-color);
+            border-radius: 4px;
             padding: 10px;
             margin-bottom: 15px;
-            border-radius: 4px;
-            background: #f9fafb;
           "
         ></div>
         <button onclick="goToManualInvites()">次へ</button>
@@ -306,13 +353,11 @@
         <div
           id="manual-options-list"
           style="
-            max-height: 200px;
-            overflow-y: auto;
+            background: #f9fafb;
             border: 1px solid var(--border-color);
+            border-radius: 4px;
             padding: 10px;
             margin-bottom: 15px;
-            border-radius: 4px;
-            background: #f9fafb;
           "
         ></div>
         <button onclick="goToFinalConfirm()">次へ</button>
@@ -330,14 +375,13 @@
         </p>
         <div
           id="final-invites-list"
+          class="grid-list"
           style="
-            max-height: 200px;
-            overflow-y: auto;
+            background: #f9fafb;
             border: 1px solid var(--border-color);
+            border-radius: 4px;
             padding: 10px;
             margin-bottom: 15px;
-            border-radius: 4px;
-            background: #f9fafb;
           "
         ></div>
         <button id="executeBtn" onclick="executeSpaceCreation()">
@@ -793,21 +837,21 @@
         container.innerHTML = currentAutoInvites
           .map((u, index) => {
             if (u.isCreator) {
-              return `<div style="padding: 4px 0; border-bottom: 1px solid #eee; opacity: 0.5;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: not-allowed; font-weight: normal;">
+              return `<div class="invite-item creator-item">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: not-allowed; font-weight: normal; width: 100%;">
               <input type="checkbox" disabled checked>
               <div>
-                <strong>${escapeHtml(u.name)}</strong> <span style="font-size:0.8em; color:#666;">(${escapeHtml(u.dept)})</span><br>
+                <strong class="name-text">${escapeHtml(u.name)}</strong> <span style="font-size:0.8em; color:#666;">(${escapeHtml(u.dept)})</span><br>
                 <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
               </div>
             </label>
           </div>`;
             } else {
-              return `<div style="padding: 4px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between;">
+              return `<div class="invite-item">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; width: 100%;">
               <input type="checkbox" id="auto-chk-${index}" value="${index}" checked onchange="updateAutoInvitesCount()">
               <div>
-                <strong>${escapeHtml(u.name)}</strong> <span style="font-size:0.8em; color:#666;">(${escapeHtml(u.dept)})</span><br>
+                <strong class="name-text">${escapeHtml(u.name)}</strong> <span style="font-size:0.8em; color:#666;">(${escapeHtml(u.dept)})</span><br>
                 <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
               </div>
             </label>
@@ -850,11 +894,11 @@
             .map(dept => {
               const members = deptMap[dept];
               const membersHtml = members.map(u => 
-                `<div style="padding: 4px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; margin-left: 8px;">
+                `<div class="invite-item" style="border: none; border-bottom: 1px solid #eee; padding-left: 8px;">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; width: 100%;">
               <input type="checkbox" id="manual-chk-${u.originalIndex}" value="${u.originalIndex}">
               <div>
-                <strong>${escapeHtml(u.name)}</strong><br>
+                <strong class="name-text">${escapeHtml(u.name)}</strong><br>
                 <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
               </div>
             </label>
@@ -862,10 +906,11 @@
               ).join('');
 
               return `<details style="margin-bottom: 8px; background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
-                <summary style="cursor: pointer; padding: 12px; font-weight: bold; background: #f9fafb; list-style: none;">
-                  ${escapeHtml(dept)} <span style="font-size: 0.8em; color: #666; font-weight: normal;">(${members.length}名)</span>
+                <summary style="cursor: pointer; padding: 12px; font-weight: bold; background: #f9fafb; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                  <span>${escapeHtml(dept)} <span style="font-size: 0.8em; color: #666; font-weight: normal;">(${members.length}名)</span></span>
+                  <span style="color: #6b7280; font-size: 0.8em;">▼</span>
                 </summary>
-                <div style="padding: 0 12px 8px 12px;">
+                <div class="grid-list" style="padding: 0 12px 8px 12px; gap: 8px;">
                   ${membersHtml}
                 </div>
               </details>`;
@@ -897,12 +942,18 @@
         container.innerHTML = finalUsers
           .map((u) => {
             if (u.isCreator) {
-              return `<div style="padding: 4px 0; border-bottom: 1px solid #eee; opacity: 0.5;">
-          <strong>${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">(${escapeHtml(u.dept)}) ${escapeHtml(u.email)}</span>
+              return `<div class="invite-item creator-item">
+          <div>
+            <strong class="name-text">${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">(${escapeHtml(u.dept)})</span><br>
+            <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
+          </div>
         </div>`;
             } else {
-              return `<div style="padding: 4px 0; border-bottom: 1px solid #eee;">
-          <strong>${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
+              return `<div class="invite-item">
+          <div>
+            <strong class="name-text">${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">(${escapeHtml(u.dept)})</span><br>
+            <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
+          </div>
         </div>`;
             }
           })
