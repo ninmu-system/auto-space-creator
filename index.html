@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Google Chat<br>スペース作成&自動招待 (SPA)</title>
+    <title>Google Chat<br>スペース作成&自動一括招待 (SPA)</title>
     <style>
       /* Premium Aesthetics */
       :root {
@@ -152,8 +152,8 @@
   <body>
     <!-- STEP 1: ログイン画面 -->
     <div class="card active" id="login-card">
-      <h1>Google Chat<br>スペース作成&自動招待</h1>
-      <p class="subtitle">班編成データに基づいて各部門のメンバーを自動招待します<br>Googleアカウントでログインしてください</p>
+      <h1>Google Chat<br>スペース作成&自動一括招待</h1>
+      <p class="subtitle">班編成データに基づいて各部門のメンバーを自動で一括招待します<br>Googleアカウントでログインしてください</p>
       <button id="login-btn" onclick="handleAuthClick()">Googleでログイン</button>
       <div
         style="
@@ -196,7 +196,7 @@
 
     <!-- STEP 2B: 一般ユーザー用画面 -->
     <div class="card" id="main-card">
-      <h1>Google Chat<br>スペース作成&自動招待</h1>
+      <h1>Google Chat<br>スペース作成&自動一括招待</h1>
       <p class="subtitle" id="main-user-info" style="white-space: pre-wrap"></p>
 
       <!-- ステップ1: 条件入力 -->
