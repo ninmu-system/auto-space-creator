@@ -821,7 +821,9 @@
             count++;
           }
         });
-        document.getElementById('auto-confirm-text').innerHTML = `以下のメンバーでスペースを作成します（あなたを含め計 ${count} 名）。招待しない方がいればチェックを外してください。<br>次に進むと全責任者から個別選択できます。`;
+        const selectedDept = document.getElementById('deptSelect').value;
+        const nextText = selectedDept === '全責任者' ? '' : '<br>次に進むと全責任者から個別選択できます。';
+        document.getElementById('auto-confirm-text').innerHTML = `以下のメンバーでスペースを作成します（あなたを含め計 ${count} 名）。招待しない方がいればチェックを外してください。${nextText}`;
       }
       function escapeHtml(str) {
         if (typeof str !== 'string') return str;
@@ -861,6 +863,12 @@
       }
 
       function goToManualInvites() {
+        const selectedDept = document.getElementById('deptSelect').value;
+        if (selectedDept === '全責任者') {
+          goToFinalConfirm(true); // スキップ
+          return;
+        }
+
         document.getElementById('step-confirm-auto').style.display = 'none';
         document.getElementById('step-manual-invite').style.display = 'flex';
 
@@ -973,8 +981,14 @@
       }
 
       function backToManualInvites() {
+        const selectedDept = document.getElementById('deptSelect').value;
         document.getElementById('step-final-execute').style.display = 'none';
-        document.getElementById('step-manual-invite').style.display = 'flex';
+        if (selectedDept === '全責任者') {
+          // 全責任者の場合はステップ3をスキップしてきているのでステップ2に戻る
+          document.getElementById('step-confirm-auto').style.display = 'flex';
+        } else {
+          document.getElementById('step-manual-invite').style.display = 'flex';
+        }
       }
 
       function showResultScreen(isSuccess, title, desc) {
