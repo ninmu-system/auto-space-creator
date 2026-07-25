@@ -137,6 +137,28 @@
         color: #991b1b;
         border: 1px solid #f87171;
       }
+      .step-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin: 0 0 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e5e7eb;
+      }
+      .step-title span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 50%;
+        font-size: 0.85rem;
+      }
       .spinner {
         display: none;
         width: 20px;
@@ -211,19 +233,23 @@
 
       <!-- ステップ1: 条件入力 -->
       <div id="step-form">
+        <h2 class="step-title"><span>1</span> 条件の入力</h2>
         <div class="form-group">
           <label for="eventName">任務名</label>
           <input
             type="text"
             id="eventName"
+            autocomplete="off"
             placeholder="任務名をここに入力してください（【】は不要）"
           />
+          <div id="eventNameError" style="color: #dc2626; font-size: 0.85em; margin-top: 4px; display: none;">任務名を入力してください</div>
         </div>
         <div class="form-group">
           <label for="deptSelect">対象部門</label>
           <select id="deptSelect">
             <!-- JSで動的に追加 -->
           </select>
+          <div id="deptSelectError" style="color: #dc2626; font-size: 0.85em; margin-top: 4px; display: none;">対象部門を選んでください</div>
         </div>
         <button id="submitBtn" onclick="previewSpaceCreation()">
           <span id="btn-text">次へ</span>
@@ -234,6 +260,7 @@
 
       <!-- ステップ2: 自動抽出の確認 -->
       <div id="step-confirm-auto" style="display: none">
+        <h2 class="step-title"><span>2</span> 必須メンバーの確認</h2>
         <p id="auto-confirm-text" style="font-weight: bold; margin-bottom: 10px">
           以下の人物を招待します。招待しない方がいればチェックを外してください。<br>問題なければ次に進んでください。
         </p>
@@ -257,6 +284,7 @@
 
       <!-- ステップ3: 個別追加 -->
       <div id="step-manual-invite" style="display: none">
+        <h2 class="step-title"><span>3</span> 個別メンバーの追加</h2>
         <p style="font-weight: bold; margin-bottom: 10px">
           他に個別に招待したい人がいれば選んでください。
         </p>
@@ -281,6 +309,7 @@
 
       <!-- ステップ4: 最終確認 -->
       <div id="step-final-execute" style="display: none">
+        <h2 class="step-title"><span>✓</span> 最終確認</h2>
         <p id="final-confirm-text" style="font-weight: bold; margin-bottom: 10px">
           以下のメンバーでスペースを作成し招待します（最終確認）
         </p>
@@ -511,7 +540,7 @@
             const fileNameDisplay = data.fileName ? `\n登録中のファイル: 【 ${data.fileName} 】` : '';
             document.getElementById(
               'main-user-info'
-            ).innerText = `ログイン中: ${currentUserEmail}\n班編成データアップロード済み：招待可能${fileNameDisplay}`;
+            ).innerHTML = `ログイン中: <strong>${currentUserEmail}</strong><hr style="margin: 12px 0; border: none; border-top: 1px solid #cbd5e1;">班編成データアップロード済み：招待可能<span style="font-size: 0.9em; color: #6b7280;">${fileNameDisplay}</span>`;
             showMessage('', false); // メッセージをクリア
           } else {
             // パターンA: 未アップロード
@@ -663,8 +692,12 @@
         const eventName = document.getElementById('eventName').value.trim();
         const selectedDept = document.getElementById('deptSelect').value;
 
-        if (!eventName || !selectedDept) {
-          showMessage('行事名と対象部門を入力してください。', false);
+        const nameError = document.getElementById('eventNameError');
+        const deptError = document.getElementById('deptSelectError');
+        nameError.style.display = !eventName ? 'block' : 'none';
+        deptError.style.display = (!selectedDept || selectedDept === "") ? 'block' : 'none';
+
+        if (!eventName || !selectedDept || selectedDept === "") {
           return;
         }
 
@@ -756,16 +789,12 @@
           </div>`;
             } else {
               return `<div style="padding: 4px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; width: 100%;">
               <input type="checkbox" id="auto-chk-${index}" value="${index}" checked onchange="updateAutoInvitesCount()">
               <div>
                 <strong>${escapeHtml(u.name)}</strong> <span style="font-size:0.8em; color:#666;">(${escapeHtml(u.dept)})</span><br>
                 <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
               </div>
-            </label>
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.8em; color: #b45309; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">
-              <input type="checkbox" id="auto-owner-chk-${index}" value="${index}" onchange="onOwnerCheck(${index}, 'auto')">
-              管理者
             </label>
           </div>`;
             }
@@ -783,8 +812,6 @@
           }
           const chk = document.getElementById(`auto-chk-${index}`);
           if (chk && chk.checked) {
-            const ownerChk = document.getElementById(`auto-owner-chk-${index}`);
-            u.isOwner = ownerChk && ownerChk.checked;
             filteredAutoInvites.push(u);
           }
         });
@@ -798,23 +825,36 @@
           container.innerHTML =
             "<p style='color:#666;'>追加できるメンバーがいません。</p>";
         } else {
-          container.innerHTML = currentManualOptions
-            .map(
-              (u, index) =>
-                `<div style="padding: 4px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
-              <input type="checkbox" id="manual-chk-${index}" value="${index}">
+          const deptMap = {};
+          currentManualOptions.forEach((u, index) => {
+            if (!deptMap[u.dept]) deptMap[u.dept] = [];
+            deptMap[u.dept].push({ ...u, originalIndex: index });
+          });
+
+          container.innerHTML = Object.keys(deptMap)
+            .map(dept => {
+              const members = deptMap[dept];
+              const membersHtml = members.map(u => 
+                `<div style="padding: 4px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; margin-left: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; width: 100%;">
+              <input type="checkbox" id="manual-chk-${u.originalIndex}" value="${u.originalIndex}">
               <div>
-                <strong>${escapeHtml(u.name)}</strong> <span style="font-size:0.8em; color:#666;">(${escapeHtml(u.dept)})</span><br>
+                <strong>${escapeHtml(u.name)}</strong><br>
                 <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
               </div>
             </label>
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.8em; color: #b45309; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">
-              <input type="checkbox" id="manual-owner-chk-${index}" value="${index}" onchange="onOwnerCheck(${index}, 'manual')">
-              管理者
-            </label>
           </div>`
-            )
+              ).join('');
+
+              return `<details style="margin-bottom: 8px; background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                <summary style="cursor: pointer; padding: 12px; font-weight: bold; background: #f9fafb; list-style: none;">
+                  ${escapeHtml(dept)} <span style="font-size: 0.8em; color: #666; font-weight: normal;">(${members.length}名)</span>
+                </summary>
+                <div style="padding: 0 12px 8px 12px;">
+                  ${membersHtml}
+                </div>
+              </details>`;
+            })
             .join('');
         }
       }
@@ -825,8 +865,6 @@
           currentManualOptions.forEach((u, index) => {
             const chk = document.getElementById(`manual-chk-${index}`);
             if (chk && chk.checked) {
-              const ownerChk = document.getElementById(`manual-owner-chk-${index}`);
-              u.isOwner = ownerChk && ownerChk.checked;
               selectedManualInvites.push(u);
             }
           });
@@ -848,9 +886,8 @@
           <strong>${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">(${escapeHtml(u.dept)}) ${escapeHtml(u.email)}</span>
         </div>`;
             } else {
-              const ownerBadge = u.isOwner ? `<span style="font-size: 0.8em; color: #b45309; background: #fef3c7; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">管理者</span>` : '';
               return `<div style="padding: 4px 0; border-bottom: 1px solid #eee;">
-          <strong>${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>${ownerBadge}
+          <strong>${escapeHtml(u.name)}</strong> <span style="color:#666; font-size:0.8em;">${escapeHtml(u.email)}</span>
         </div>`;
             }
           })
@@ -1020,7 +1057,7 @@
 
         const promises = memberOptions.map(async (memberOpt) => {
           try {
-            const roleStr = memberOpt.isOwner ? 'ROLE_MANAGER' : 'ROLE_MEMBER';
+            const roleStr = 'ROLE_MEMBER';
             const response = await fetch(
               `https://chat.googleapis.com/v1/${spaceResourceName}/members`,
               {
