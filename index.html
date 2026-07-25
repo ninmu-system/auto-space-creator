@@ -864,12 +864,15 @@
 
       function goToManualInvites() {
         const selectedDept = document.getElementById('deptSelect').value;
+        
+        // 先にステップ2の画面を非表示にする
+        document.getElementById('step-confirm-auto').style.display = 'none';
+
         if (selectedDept === '全責任者') {
           goToFinalConfirm(true); // スキップ
           return;
         }
 
-        document.getElementById('step-confirm-auto').style.display = 'none';
         document.getElementById('step-manual-invite').style.display = 'flex';
 
         const container = document.getElementById('manual-options-list');
