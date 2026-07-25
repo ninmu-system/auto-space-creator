@@ -741,6 +741,14 @@
       /**
        * メイン処理の実行 (一般ユーザー用)
        */
+      // 特例ユーザーの定義（後で実際の名前とメールアドレスに書き換えてください）
+      const SPECIAL_USER = {
+        name: '総本山　任務事務局',
+        email: 'ninmu-jimukyoku@fuji-mics.net',
+        dept: '事務局',
+        isSpecial: true
+      };
+
       let currentAutoInvites = [];
       let currentManualOptions = [];
       let selectedManualInvites = [];
@@ -783,6 +791,18 @@
               email: currentUserEmail,
               isCreator: true
             });
+          }
+
+          // 特例ユーザーが元データに含まれていた場合の重複を防ぐ
+          currentAutoInvites = currentAutoInvites.filter((u) => u.email !== SPECIAL_USER.email);
+          currentManualOptions = currentManualOptions.filter((u) => u.email !== SPECIAL_USER.email);
+
+          if (selectedDept === '全責任者') {
+            // 全責任者の場合、管理者（index 0）の次（index 1）に挿入（ステップ2に表示され、自動でチェックが入る）
+            currentAutoInvites.splice(1, 0, SPECIAL_USER);
+          } else {
+            // 各部門の場合、個別追加リスト（ステップ3）の最上段に挿入（最初はチェックなし）
+            currentManualOptions.unshift(SPECIAL_USER);
           }
 
           // ステップ2へ遷移
