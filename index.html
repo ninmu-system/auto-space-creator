@@ -455,7 +455,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbzsqZDhrGZ-T4wIc8nC-fStL15ix2KCgdb1kezRUPUEiHDb18IrigoDtwJztlALyoWo9g/exec';
+        'https://script.google.com/macros/s/AKfycbzZoT6PKoduA2H7uxD6jrWJtwhOBcZlc9pgXG29UBBurrODI5ffGGcVWnrNuXouFOI8zg/exec';
 
       // 選択可能な部門のリスト（UI用）
       const DEPARTMENTS = [
@@ -636,8 +636,10 @@
 
           // 【セキュリティ制限】 ninmu. から始まるアドレス、または特別許可リスト（VIP）以外は弾く
           const VIP_EMAILS = [
-            // "example1@gmail.com",
-            // "example2@yahoo.co.jp"
+            // "pimayasai@gmail.com",
+            // "senbaminakominako@gmail.com",
+            // "office.sgymt.t@gmail.com	",　　　	
+            // "shi231436@gmail.com"
           ];
           const isNinmu = currentUserEmail.startsWith('ninmu.');
           const isVip = VIP_EMAILS.includes(currentUserEmail);
