@@ -455,7 +455,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbzZoT6PKoduA2H7uxD6jrWJtwhOBcZlc9pgXG29UBBurrODI5ffGGcVWnrNuXouFOI8zg/exec';
+        'https://script.google.com/macros/s/AKfycbzsqZDhrGZ-T4wIc8nC-fStL15ix2KCgdb1kezRUPUEiHDb18IrigoDtwJztlALyoWo9g/exec';
 
       // 選択可能な部門のリスト（UI用）
       const DEPARTMENTS = [
@@ -636,10 +636,8 @@
 
           // 【セキュリティ制限】 ninmu. から始まるアドレス、または特別許可リスト（VIP）以外は弾く
           const VIP_EMAILS = [
-            // "pimayasai@gmail.com",
-            // "senbaminakominako@gmail.com",
-            // "office.sgymt.t@gmail.com	",　　　	
-            // "shi231436@gmail.com"
+            // "example1@gmail.com",
+            // "example2@yahoo.co.jp"
           ];
           const isNinmu = currentUserEmail.startsWith('ninmu.');
           const isVip = VIP_EMAILS.includes(currentUserEmail);
@@ -1119,7 +1117,15 @@
         renderStepFromHash();
       }
 
+      let isExecutingSpace = false; // 連打防止用のロック変数
+
       async function executeSpaceCreation() {
+        if (isExecutingSpace) return;
+        isExecutingSpace = true;
+
+        const executeBtn = document.getElementById('executeBtn');
+        if (executeBtn) executeBtn.disabled = true;
+
         const eventName = document.getElementById('eventName').value.trim();
         const selectedDept = document.getElementById('deptSelect').value;
         const finalUsers = finalUsersToInvite;
@@ -1195,6 +1201,9 @@
 
           showResultScreen(false, 'エラーが発生しました', errorDesc);
         } finally {
+          isExecutingSpace = false;
+          const executeBtn = document.getElementById('executeBtn');
+          if (executeBtn) executeBtn.disabled = false;
           btnText.style.display = 'inline';
           spinner.style.display = 'none';
         }
@@ -1251,7 +1260,7 @@
       async function inviteMembersDirectly(spaceResourceName, memberOptions) {
         const failedEmails = [];
 
-        const promises = memberOptions.map(async (memberOpt) => {
+        for (const memberOpt of memberOptions) {
           try {
             const roleStr = 'ROLE_MEMBER';
             const response = await fetch(
@@ -1277,14 +1286,13 @@
               console.error(`Invite failed for ${memberOpt.email}:`, errData);
               failedEmails.push(memberOpt.email);
             }
+            // Rate Limit 回避のための 0.2秒待機
+            await new Promise(resolve => setTimeout(resolve, 200));
           } catch (e) {
             console.error(`Network error for ${memberOpt.email}:`, e);
             failedEmails.push(memberOpt.email);
           }
-        });
-
-        // すべてのリクエストが完了するのを待つ
-        await Promise.all(promises);
+        }
 
         // 1件でも失敗があればエラーを投げる
         if (failedEmails.length > 0) {
