@@ -584,7 +584,6 @@
         tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
-          prompt: 'consent', // 動画撮影用に毎回同意画面（警告画面含む）を強制表示
           callback: async (tokenResponse) => {
             if (tokenResponse.error !== undefined) {
               alert('ログインに失敗しました: ' + tokenResponse.error);
