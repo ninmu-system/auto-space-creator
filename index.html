@@ -671,17 +671,24 @@
         // 認証用トークンをバックエンドへ送信する
         payload.accessToken = accessToken;
 
-        const response = await fetch(GAS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload),
-          redirect: 'follow',
-        });
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || 'APIエラーが発生しました。');
+        try {
+          const response = await fetch(GAS_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload),
+            redirect: 'follow',
+          });
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.message || 'APIエラーが発生しました。');
+          }
+          return data;
+        } catch (error) {
+          if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+            throw new Error('GAS_AUTH_REQUIRED');
+          }
+          throw error;
         }
-        return data;
       }
 
       /**
@@ -711,7 +718,15 @@
             showAdminMessage('', false); // メッセージをクリア
           }
         } catch (error) {
-          alert('ステータス確認に失敗しました: ' + error.message);
+          if (error.message === 'GAS_AUTH_REQUIRED') {
+            const authMsg = `バックエンドの再認証が必要です。<br><br><a href="${GAS_API_URL}" target="_blank" style="color:#2563eb;text-decoration:underline;font-weight:bold;">👉 ここをクリックして認証ページを開く</a><br><br>※開いた先の画面で「詳細を表示」＞「安全ではないページに移動」をクリックして許可を完了させた後、<strong>この画面をリロード（再読み込み）</strong>してください。`;
+            document.getElementById('login-card').classList.remove('active');
+            document.getElementById('admin-card').classList.add('active');
+            document.getElementById('admin-user-info').innerHTML = authMsg;
+            showAdminMessage('', false);
+          } else {
+            alert('ステータス確認に失敗しました: ' + error.message);
+          }
         }
       }
 
