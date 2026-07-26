@@ -250,7 +250,8 @@
       <!-- In-app Browser Warning -->
       <div id="in-app-warning" style="display: none; background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; font-weight: bold; line-height: 1.5; font-size: 0.9rem;">
         ⚠️ LINE等のアプリ内ブラウザではGoogleログインが正常に完了せず画面が真っ白になります。<br><br>
-        画面右上（または右下）のメニュー「<span style="font-size: 1.2em;">⋮</span>」等から、「<span style="color: #0369a1; text-decoration: underline;">ブラウザで開く</span>」または「<span style="color: #0369a1; text-decoration: underline;">Safariで開く</span>」を選択して開き直してください。
+        <a id="external-browser-link" href="#" style="display: inline-block; background: #2563eb; color: white; padding: 12px 15px; text-decoration: none; border-radius: 5px; font-size: 1.1em; text-align: center; width: 100%; box-sizing: border-box; margin-bottom: 10px; font-weight: bold;">👉 ここをタップして標準ブラウザで開く</a><br>
+        <span style="font-size: 0.85em; font-weight: normal; color: #7f1d1d;">※上のボタンが反応しない場合は、画面右上（または右下）のメニュー「⋮」から「ブラウザ（Safari等）で開く」を選択してください。</span>
       </div>
 
       <!-- Mobile Browser Info -->
@@ -466,7 +467,19 @@
 
         if (isInAppBrowser) {
           const warningEl = document.getElementById('in-app-warning');
-          if (warningEl) warningEl.style.display = 'block';
+          if (warningEl) {
+            warningEl.style.display = 'block';
+            
+            // 現在のURLに LINE等を外部ブラウザで開かせるマジックパラメータを付与
+            let currentUrl = window.location.href;
+            if (currentUrl.includes('?')) {
+              if (!currentUrl.includes('openExternalBrowser=1')) currentUrl += '&openExternalBrowser=1';
+            } else {
+              currentUrl += '?openExternalBrowser=1';
+            }
+            const externalLink = document.getElementById('external-browser-link');
+            if (externalLink) externalLink.href = currentUrl;
+          }
           
           const btn = document.getElementById('login-btn');
           if (btn) {
