@@ -247,6 +247,17 @@
     <div class="card active" id="login-card">
       <h1>Google Chat<br>スペース作成&自動一括招待</h1>
       <p class="subtitle">班編成データに基づいて各部門のメンバーを一括招待します<br>Googleアカウントでログインしてください</p>
+      <!-- In-app Browser Warning -->
+      <div id="in-app-warning" style="display: none; background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; font-weight: bold; line-height: 1.5; font-size: 0.9rem;">
+        ⚠️ LINE等のアプリ内ブラウザではGoogleログインが正常に完了せず画面が真っ白になります。<br><br>
+        画面右上（または右下）のメニュー「<span style="font-size: 1.2em;">⋮</span>」等から、「<span style="color: #0369a1; text-decoration: underline;">ブラウザで開く</span>」または「<span style="color: #0369a1; text-decoration: underline;">Safariで開く</span>」を選択して開き直してください。
+      </div>
+
+      <!-- Mobile Browser Info -->
+      <div id="mobile-warning" style="display: none; color: #0369a1; font-size: 0.85rem; text-align: center; margin-bottom: 15px; font-weight: bold; background: #e0f2fe; padding: 10px; border-radius: 8px;">
+        ※スマホの場合、ログイン画面が別タブで開きます。<br>認証後は自動で閉じない場合があるため、手動でこのタブに戻ってきてください。
+      </div>
+
       <button id="login-btn" onclick="handleAuthClick()">Googleでログイン</button>
       <div
         style="
@@ -445,8 +456,37 @@
 
     <script>
       /**
+       * ブラウザ環境検知 (In-App Browser & Mobile)
+       */
+      function checkBrowserEnvironment() {
+        const ua = navigator.userAgent || navigator.vendor || window.opera;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        // LINE, Instagram, Facebook, Twitterなどの代表的なアプリ内ブラウザ
+        const isInAppBrowser = /Line|Instagram|FBAN|FBAV|Twitter/i.test(ua);
+
+        if (isInAppBrowser) {
+          const warningEl = document.getElementById('in-app-warning');
+          if (warningEl) warningEl.style.display = 'block';
+          
+          const btn = document.getElementById('login-btn');
+          if (btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.innerText = '標準ブラウザで開き直してください';
+          }
+        } else if (isMobile) {
+          const mobileWarningEl = document.getElementById('mobile-warning');
+          if (mobileWarningEl) mobileWarningEl.style.display = 'block';
+        }
+      }
+
+      // DOM構築完了時にチェックを実行
+      window.addEventListener('DOMContentLoaded', checkBrowserEnvironment);
+
+      /**
        * =========================================================
-       * 設定（ユーザー環境に合わせて書き換えてください）
+       * 定数定義・初期設定エリア
        * =========================================================
        */
       // GCPで発行した OAuth 2.0 クライアントID
@@ -455,7 +495,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbyK2J1wY-Dn6R5CFYinBvASPcALqgAlXFH5J579LOJCsaz1EA1fjmQ-awHmFp6PpuL2rw/exec';
+        'https://script.google.com/macros/s/AKfycbzsqZDhrGZ-T4wIc8nC-fStL15ix2KCgdb1kezRUPUEiHDb18IrigoDtwJztlALyoWo9g/exec';
 
       // 選択可能な部門のリスト（UI用）
       const DEPARTMENTS = [
