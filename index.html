@@ -455,7 +455,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbxpM6xIa0L3R5toiIm_vviTrOgUQ9w1CHVGI6vFHZyzXMBTrknWBrUxUX_nCcfw9wKbkQ/exec';
+        'https://script.google.com/macros/s/AKfycbzsqZDhrGZ-T4wIc8nC-fStL15ix2KCgdb1kezRUPUEiHDb18IrigoDtwJztlALyoWo9g/exec';
 
       // 選択可能な部門のリスト（UI用）
       const DEPARTMENTS = [
@@ -1110,16 +1110,22 @@
       }
 
       function resetSpaceCreation() {
+        if (isExecutingSpace) {
+          alert('現在処理中です。完了するまでしばらくお待ちください。');
+          return;
+        }
         history.pushState(null, '', '#step1');
         renderStepFromHash();
         document.getElementById('finalStatusMessage').innerHTML = '';
       }
 
       function backToAutoInvites() {
+        if (isExecutingSpace) return;
         history.back();
       }
 
       function backToManualInvites() {
+        if (isExecutingSpace) return;
         history.back();
       }
 
