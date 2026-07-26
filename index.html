@@ -455,7 +455,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbxKHkFcnSxHHerBZl4mjw0k5oaD82vj6J0RRXJzte6m07qLj1uRR7EZHXMPOUTCRVqDBQ/exec';
+        'https://script.google.com/macros/s/AKfycbxAK8caRuyxQfYPmGD_BGA9oeVmL1KUg14LW2CX2c3s6wLac2Dp4zOl8Gl-BgqWE3Lasg/exec';
 
       // 選択可能な部門のリスト（UI用）
       const DEPARTMENTS = [
@@ -477,9 +477,98 @@
       let currentUserEmail = '';
 
       /**
+       * 強制ログアウト（セッションタイムアウト）管理
+       */
+      let logoutTimer = null;
+      const LOGOUT_TIMEOUT_MS = 15 * 60 * 1000; // 15分間
+
+      function resetLogoutTimer() {
+        if (!accessToken) return; // ログインしていない状態ではタイマーを動かさない
+        if (logoutTimer) clearTimeout(logoutTimer);
+        logoutTimer = setTimeout(forceLogout, LOGOUT_TIMEOUT_MS);
+      }
+
+      function forceLogout() {
+        alert('セキュリティ保護のため、無操作状態が15分間続いたため強制ログアウトしました。\n作業を再開するには再度ログインしてください。');
+        
+        // トークン等の破棄
+        accessToken = '';
+        currentUserEmail = '';
+        if (logoutTimer) clearTimeout(logoutTimer);
+        
+        // 進行中の入力状態をリセットし、ログイン画面に戻す
+        resetSpaceCreation();
+        document.getElementById('main-card').classList.remove('active');
+        document.getElementById('admin-card').classList.remove('active');
+        document.getElementById('login-card').classList.add('active');
+        
+        // ログインボタンの見た目を初期状態に戻す
+        const btn = document.getElementById('login-btn');
+        if (btn) {
+          btn.innerText = 'Googleでログイン';
+          btn.disabled = false;
+          btn.style.backgroundColor = '#2563eb';
+        }
+      }
+
+      // ユーザーが何らかの操作を行ったらタイマーをリセットする
+      ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
+        document.addEventListener(evt, resetLogoutTimer, { passive: true });
+      });
+
+      /**
+       * 画面（ステップ）遷移のハッシュベース管理
+       */
+      function renderStepFromHash() {
+        const hash = location.hash || '#step1';
+        
+        // ログイン前の画面（login-card/admin-card）の場合は無視
+        if (!document.getElementById('main-card').classList.contains('active')) {
+          return;
+        }
+
+        // 一旦すべてのステップを非表示にする
+        document.getElementById('step-form').style.display = 'none';
+        document.getElementById('step-confirm-auto').style.display = 'none';
+        document.getElementById('step-manual-invite').style.display = 'none';
+        document.getElementById('step-final-execute').style.display = 'none';
+        document.getElementById('step-result').style.display = 'none';
+
+        // ハッシュに応じて表示
+        if (hash === '#step2') {
+          document.getElementById('step-confirm-auto').style.display = 'flex';
+        } else if (hash === '#step3') {
+          document.getElementById('step-manual-invite').style.display = 'flex';
+        } else if (hash === '#step4') {
+          document.getElementById('step-final-execute').style.display = 'flex';
+        } else if (hash === '#result') {
+          document.getElementById('step-result').style.display = 'block';
+        } else {
+          // デフォルトはステップ1
+          document.getElementById('step-form').style.display = 'flex';
+        }
+      }
+
+      window.addEventListener('popstate', renderStepFromHash);
+
+      // タブ閉じ・リロード防止警告
+      window.addEventListener('beforeunload', function (e) {
+        const hash = location.hash;
+        // ログイン済かつ、入力作業中（ステップ2〜4）の場合のみ警告を出す
+        if (accessToken && (hash === '#step2' || hash === '#step3' || hash === '#step4')) {
+          e.preventDefault();
+          e.returnValue = ''; // 古いブラウザ用の互換性
+        }
+      });
+
+      /**
        * 初期化処理
        */
       window.onload = function () {
+        // 初回ロード時はハッシュをリセット
+        if (location.hash) {
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
         // 部門ドロップダウンの初期化
         const select = document.getElementById('deptSelect');
         select.innerHTML =
@@ -556,6 +645,10 @@
           document.getElementById(
             'main-user-info'
           ).innerText = `ログイン中: ${currentUserEmail}`; // 一時的に表示
+          
+          // ログイン成功時に自動ログアウトのタイマーを開始
+          resetLogoutTimer();
+
           return true;
         } catch (error) {
           console.error('ユーザー情報の取得に失敗しました', error);
@@ -809,8 +902,8 @@
           renderAutoInvites();
           updateAutoInvitesCount();
 
-          document.getElementById('step-form').style.display = 'none';
-          document.getElementById('step-confirm-auto').style.display = 'flex';
+          history.pushState(null, '', '#step2');
+          renderStepFromHash();
         } catch (error) {
           showMessage(error.message, false);
         } finally {
@@ -884,16 +977,11 @@
 
       function goToManualInvites() {
         const selectedDept = document.getElementById('deptSelect').value;
-        
-        // 先にステップ2の画面を非表示にする
-        document.getElementById('step-confirm-auto').style.display = 'none';
 
         if (selectedDept === '全責任者') {
           goToFinalConfirm(true); // スキップ
           return;
         }
-
-        document.getElementById('step-manual-invite').style.display = 'flex';
 
         const container = document.getElementById('manual-options-list');
         if (currentManualOptions.length === 0) {
@@ -932,6 +1020,9 @@
               </details>`;
             })
             .join('');
+            
+          history.pushState(null, '', '#step3');
+          renderStepFromHash();
         }
       }
 
@@ -958,9 +1049,6 @@
           });
         }
 
-        document.getElementById('step-manual-invite').style.display = 'none';
-        document.getElementById('step-final-execute').style.display = 'flex';
-
         finalUsersToInvite = [...selectedAutoInvites, ...selectedManualInvites];
         
         const count = finalUsersToInvite.length; // 管理者(isCreator)を含める
@@ -986,38 +1074,27 @@
             }
           })
           .join('');
+          
+        history.pushState(null, '', '#step4');
+        renderStepFromHash();
       }
 
       function resetSpaceCreation() {
-        document.getElementById('step-form').style.display = 'block';
-        document.getElementById('step-confirm-auto').style.display = 'none';
-        document.getElementById('step-manual-invite').style.display = 'none';
-        document.getElementById('step-final-execute').style.display = 'none';
-        document.getElementById('step-result').style.display = 'none'; // 追加
-        document.getElementById('step-form').style.display = 'flex'; // 追加
+        history.pushState(null, '', '#step1');
+        renderStepFromHash();
         document.getElementById('finalStatusMessage').innerHTML = '';
       }
 
       function backToAutoInvites() {
-        document.getElementById('step-manual-invite').style.display = 'none';
-        document.getElementById('step-confirm-auto').style.display = 'flex';
+        history.back();
       }
 
       function backToManualInvites() {
-        const selectedDept = document.getElementById('deptSelect').value;
-        document.getElementById('step-final-execute').style.display = 'none';
-        if (selectedDept === '全責任者') {
-          // 全責任者の場合はステップ3をスキップしてきているのでステップ2に戻る
-          document.getElementById('step-confirm-auto').style.display = 'flex';
-        } else {
-          document.getElementById('step-manual-invite').style.display = 'flex';
-        }
+        history.back();
       }
 
       function showResultScreen(isSuccess, title, desc) {
-        document.getElementById('step-final-execute').style.display = 'none';
         const resultDiv = document.getElementById('step-result');
-        resultDiv.style.display = 'block';
 
         const successSvg = '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
         const errorSvg = '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
@@ -1028,6 +1105,9 @@
           ? 'var(--primary-color)'
           : '#991B1B';
         document.getElementById('result-desc').innerHTML = desc;
+        
+        history.pushState(null, '', '#result');
+        renderStepFromHash();
       }
 
       async function executeSpaceCreation() {
@@ -1097,6 +1177,12 @@
               errorDesc += `\n\n※一部のメンバーの招待に失敗しましたが、スペースの自動削除にも失敗しました。お手数ですがGoogle Chatから手動でスペース「${createdSpace.displayName}」を削除してください。`;
             }
           }
+
+          // エラーログをGASへ送信して管理者に通知（非同期で実行）
+          callGasApi({
+            action: 'reportError',
+            errorLog: errorDesc
+          }).catch(e => console.error('エラーログの送信にも失敗しました', e));
 
           showResultScreen(false, 'エラーが発生しました', errorDesc);
         } finally {
