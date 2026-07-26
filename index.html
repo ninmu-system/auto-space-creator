@@ -512,15 +512,15 @@
       const GAS_API_URL =
         'https://script.google.com/macros/s/AKfycbx86bq_0St4QQ6ipPJ7Wz75nOojEnZYQodVthkDVwv7NQvPfdyq-ZS-9r1WF6XmGEWdhw/exec';
 
-      // 選択可能な部門のリスト（UI用）
+      // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
       const DEPARTMENTS = [
-        '総務部',
-        '着山下山部',
-        '場内整理部',
-        '場外誘導部',
-        '警備部',
-        '救護部',
-        '全責任者',
+        decodeURIComponent(escape(atob('57eP5YuZ6YOo'))),
+        decodeURIComponent(escape(atob('552A5bGx5LiL5bGx6YOo'))),
+        decodeURIComponent(escape(atob('5aC05YaF5pW055CG6YOo'))),
+        decodeURIComponent(escape(atob('5aC05aSW6KqY5bCO6YOo'))),
+        decodeURIComponent(escape(atob('6K2m5YKZ6YOo'))),
+        decodeURIComponent(escape(atob('5pWR6K236YOo'))),
+        decodeURIComponent(escape(atob('5YWo6LKs5Lu76ICF'))),
       ];
 
       // Google Chat API を叩くために必要なスコープ群（削除権限 chat.spaces、メッセージ投稿権限 chat.messages も追加）
@@ -644,17 +644,22 @@
               alert('ログインに失敗しました: ' + tokenResponse.error);
               throw tokenResponse;
             }
-            // ログイン成功直後にボタンの見た目を変更
+            // Google認証直後はまだバックエンド検証前なので「照合中」にする
             const btn = document.getElementById('login-btn');
             if (btn) {
-              btn.innerText = 'ログイン成功！読み込み中...';
+              btn.innerText = '権限を照合中...';
               btn.disabled = true;
-              btn.style.backgroundColor = '#059669'; // 成功を示す緑色
+              btn.style.backgroundColor = '#6b7280'; // 処理中を示すグレー
             }
 
             accessToken = tokenResponse.access_token;
             const isValidUser = await fetchUserInfo();
             if (isValidUser) {
+              // バックエンドの検証もすべてクリアした場合
+              if (btn) {
+                btn.innerText = 'ログイン成功！';
+                btn.style.backgroundColor = '#059669'; // 成功を示す緑色
+              }
               await checkStatusAndRoute();
             } else {
               // 権限エラー等で失敗した場合、ボタンを元に戻す
@@ -911,11 +916,11 @@
       /**
        * メイン処理の実行 (一般ユーザー用)
        */
-      // 特例ユーザーの定義（後で実際の名前とメールアドレスに書き換えてください）
+      // 特例ユーザーの定義（ソースコード上でアドレスが見えないようBase64難読化）
       const SPECIAL_USER = {
-        name: '総本山　任務事務局',
-        email: 'ninmu-jimukyoku@fuji-mics.net',
-        dept: '事務局',
+        name: decodeURIComponent(escape(atob('57eP5pys5bGx44CA5Lu75YuZ5LqL5YuZ5bGA'))),
+        email: atob('bmlubXUtamltdWt5b2t1QGZ1amktbWljcy5uZXQ='),
+        dept: decodeURIComponent(escape(atob('5LqL5YuZ5bGA'))),
         isSpecial: true
       };
 
