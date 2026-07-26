@@ -455,7 +455,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbzsqZDhrGZ-T4wIc8nC-fStL15ix2KCgdb1kezRUPUEiHDb18IrigoDtwJztlALyoWo9g/exec';
+        'https://script.google.com/macros/s/AKfycbxpM6xIa0L3R5toiIm_vviTrOgUQ9w1CHVGI6vFHZyzXMBTrknWBrUxUX_nCcfw9wKbkQ/exec';
 
       // 選択可能な部門のリスト（UI用）
       const DEPARTMENTS = [
@@ -1187,7 +1187,7 @@
           });
 
           const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
-          const spaceUrl = `https://mail.google.com/chat/#chat/space/${cleanSpaceId}`;
+          const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
 
           const successMsg = `スペースの作成、メンバーの招待、および通知（チャット・メール）が正常に完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>`;
 
