@@ -584,6 +584,7 @@
         tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
+          prompt: 'consent', // 動画撮影用に毎回同意画面（警告画面含む）を強制表示
           callback: async (tokenResponse) => {
             if (tokenResponse.error !== undefined) {
               alert('ログインに失敗しました: ' + tokenResponse.error);
@@ -1056,7 +1057,15 @@
           });
         }
 
-        finalUsersToInvite = [...selectedAutoInvites, ...selectedManualInvites];
+        const allUsers = [...selectedAutoInvites, ...selectedManualInvites];
+        const uniqueEmails = new Set();
+        finalUsersToInvite = [];
+        for (const u of allUsers) {
+          if (u.email && !uniqueEmails.has(u.email)) {
+            uniqueEmails.add(u.email);
+            finalUsersToInvite.push(u);
+          }
+        }
         
         const count = finalUsersToInvite.length; // 管理者(isCreator)を含める
         document.getElementById('final-confirm-text').innerText = `以下のメンバーでスペースを作成し招待します（最終確認: 管理者含め計 ${count} 名）`;
@@ -1283,8 +1292,12 @@
 
             if (!response.ok) {
               const errData = await response.json();
-              console.error(`Invite failed for ${memberOpt.email}:`, errData);
-              failedEmails.push(memberOpt.email);
+              if (response.status !== 409) {
+                console.error(`Invite failed for ${memberOpt.email}:`, errData);
+                failedEmails.push(memberOpt.email);
+              } else {
+                console.warn(`${memberOpt.email} is already in the space (Ignored 409).`);
+              }
             }
             // Rate Limit 回避のための 0.2秒待機
             await new Promise(resolve => setTimeout(resolve, 200));
