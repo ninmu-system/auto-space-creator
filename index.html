@@ -983,6 +983,8 @@
           } catch (error) {
             showAdminMessage(error.message, false);
             setAdminLoading(false);
+            // エラーで弾かれた場合は、ファイル選択欄の表示をリセット（消去）する
+            document.getElementById('fileInput').value = '';
           }
         };
 
