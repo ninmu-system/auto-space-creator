@@ -31,6 +31,7 @@
         align-items: flex-start; /* 画面より長くなった時に上が切れないように */
         padding: 32px 16px;
         box-sizing: border-box;
+        scrollbar-gutter: stable; /* スクロールバー出現時のガタつき（レイアウトシフト）を防止 */
       }
       .card {
         background: var(--card-bg);
@@ -819,7 +820,7 @@
           // バックエンドの検証もすべてクリアした場合、ボタンを「ログイン成功！」にする
           const btn = document.getElementById('login-btn');
           if (btn) {
-            btn.innerText = '✅ ログイン成功！';
+            btn.innerText = 'ログイン成功！';
             btn.style.backgroundColor = '#059669'; // 成功を示す緑色
           }
           // 成功の文字を少し見せてから画面を切り替える
@@ -1047,6 +1048,7 @@
 
         setLoading(true);
         showMessage('', false); // クリア
+        document.getElementById('manual-options-list').innerHTML = ''; // 個別追加リストのDOMキャッシュをクリア
 
         try {
           const data = await callGasApi({
@@ -1169,6 +1171,14 @@
         }
 
         const container = document.getElementById('manual-options-list');
+        
+        // すでに描画済みの場合は再描画をスキップする（チェック状態を維持するため）
+        if (container.innerHTML.trim() !== '') {
+          history.pushState(null, '', '#step3');
+          renderStepFromHash();
+          return;
+        }
+
         if (currentManualOptions.length === 0) {
           container.innerHTML =
             "<p style='color:#666;'>追加できるメンバーがいません。</p>";
