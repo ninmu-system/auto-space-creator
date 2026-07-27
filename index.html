@@ -815,6 +815,16 @@
       async function checkStatusAndRoute() {
         try {
           const data = await callGasApi({ action: 'checkStatus' });
+          
+          // バックエンドの検証もすべてクリアした場合、ボタンを「ログイン成功！」にする
+          const btn = document.getElementById('login-btn');
+          if (btn) {
+            btn.innerText = '✅ ログイン成功！';
+            btn.style.backgroundColor = '#059669'; // 成功を示す緑色
+          }
+          // 成功の文字を少し見せてから画面を切り替える
+          await new Promise(resolve => setTimeout(resolve, 800));
+
           if (data.uploaded) {
             // パターンB: アップロード済み
             document.getElementById('login-card').classList.remove('active');
