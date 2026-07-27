@@ -431,7 +431,13 @@
           <span id="btn-text-final">作成＆招待を実行</span>
           <div class="spinner" id="spinner-final"></div>
         </button>
-        <div style="text-align: center; margin-top: 15px; font-size: 0.9em;">
+        <div id="progress-container" style="display: none; margin-top: 15px; text-align: left;">
+          <div id="progress-text" style="font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #4b5563;">処理を準備中...</div>
+          <div style="width: 100%; height: 10px; background-color: #e5e7eb; border-radius: 5px; overflow: hidden;">
+            <div id="progress-bar" style="width: 0%; height: 100%; background-color: #2563eb; transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+        <div id="nav-links-final" style="text-align: center; margin-top: 15px; font-size: 0.9em;">
           <a href="#" onclick="backToManualInvites(); return false;" style="color: #6b7280; text-decoration: underline; margin-right: 15px;">前に戻る</a>
           <a href="#" onclick="resetSpaceCreation(); return false;" style="color: #6b7280; text-decoration: underline;">初めからやり直す</a>
         </div>
@@ -1309,9 +1315,19 @@
 
         const btnText = document.getElementById('btn-text-final');
         const spinner = document.getElementById('spinner-final');
+        const progressContainer = document.getElementById('progress-container');
+        const progressText = document.getElementById('progress-text');
+        const progressBar = document.getElementById('progress-bar');
+
+        function updateProgress(message, current, total) {
+          progressText.innerText = message;
+          const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+          progressBar.style.width = percentage + '%';
+        }
 
         btnText.style.display = 'none';
-        spinner.style.display = 'block';
+        spinner.style.display = 'none'; // プログレスバーがあるのでスピナーは非表示
+        progressContainer.style.display = 'block';
 
         let createdSpace = null;
 
@@ -1319,21 +1335,31 @@
           const spaceNameStr = `【${eventName}】${selectedDept}`;
 
           // 1. スペース作成API呼び出し
+          updateProgress('スペース作成中...', 0, 100);
           createdSpace = await createChatSpaceDirectly(spaceNameStr);
 
           // 2. メンバー招待API呼び出し（1人でも失敗したら例外を投げる）
-          await inviteMembersDirectly(createdSpace.name, memberOptions);
+          await inviteMembersDirectly(createdSpace.name, memberOptions, updateProgress);
 
           // 3. 全員へのメンション付き初期メッセージを投稿（スマホのプッシュ通知を鳴らすため）
+          updateProgress('スペース作成の仕上げ中...', 100, 100);
           await postInitialMessage(createdSpace.name);
 
-          // 4. GAS側にメール通知の一斉送信をリクエスト
-          await callGasApi({
-            action: 'sendNotifications',
-            spaceNameStr: spaceNameStr,
-            spaceId: createdSpace.name,
-            emails: emails
-          });
+          // 4. GAS側にメール通知の一斉送信をリクエスト（20件ずつのチャンクに分割して進捗を表示）
+          const chunkSize = 20;
+          let sentEmailsCount = 0;
+          for (let i = 0; i < emails.length; i += chunkSize) {
+            const chunk = emails.slice(i, i + chunkSize);
+            updateProgress(`お知らせメール送信中... (現在 ${sentEmailsCount}人 / ${emails.length}人完了)`, sentEmailsCount, emails.length);
+            await callGasApi({
+              action: 'sendNotifications',
+              spaceNameStr: spaceNameStr,
+              spaceId: createdSpace.name,
+              emails: chunk
+            });
+            sentEmailsCount += chunk.length;
+            updateProgress(`お知らせメール送信中... (現在 ${sentEmailsCount}人 / ${emails.length}人完了)`, sentEmailsCount, emails.length);
+          }
 
           const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
           const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
@@ -1378,6 +1404,7 @@
           if (executeBtn) executeBtn.disabled = false;
           btnText.style.display = 'inline';
           spinner.style.display = 'none';
+          progressContainer.style.display = 'none';
         }
       }
 
@@ -1429,10 +1456,14 @@
       /**
        * Google Chat REST API: メンバー招待（並列処理、1つでも失敗したらエラー）
        */
-      async function inviteMembersDirectly(spaceResourceName, memberOptions) {
+      async function inviteMembersDirectly(spaceResourceName, memberOptions, onProgress) {
         const failedEmails = [];
+        const total = memberOptions.length;
+        let completed = 0;
 
         for (const memberOpt of memberOptions) {
+          if (onProgress) onProgress(`メンバー招待中... (現在 ${completed}人 / ${total}人完了)`, completed, total);
+
           let retryCount = 0;
           let success = false;
 
@@ -1489,6 +1520,9 @@
           if (!success && retryCount >= 3) {
             failedEmails.push(memberOpt.email);
           }
+          
+          completed++;
+          if (onProgress) onProgress(`メンバー招待中... (現在 ${completed}人 / ${total}人完了)`, completed, total);
         }
 
         // 1件でも失敗があればエラーを投げる
