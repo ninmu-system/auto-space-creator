@@ -540,7 +540,7 @@
        */
       // GCPで発行した OAuth 2.0 クライアントID
       const CLIENT_ID =
-        '102303138881-3ljqc0pbdl69qeqof78r9369cnu8783b.apps.googleusercontent.com';
+        '274759489412-vtj4vke7frchteo6v7mv3ouuah9rgdtm.apps.googleusercontent.com';
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
@@ -1321,7 +1321,7 @@
         const eventName = document.getElementById('eventName').value.trim();
         const selectedDept = document.getElementById('deptSelect').value;
         const finalUsers = finalUsersToInvite;
-        const emails = finalUsers.filter((u) => !u.isCreator).map((u) => u.email);
+        let emails = finalUsers.filter((u) => !u.isCreator).map((u) => u.email);
         const memberOptions = finalUsers.filter((u) => !u.isCreator).map((u) => ({
           email: u.email,
           isOwner: !!u.isOwner
@@ -1351,6 +1351,10 @@
           // 1. スペース作成API呼び出し
           updateProgress('スペース作成中...', 0, 100);
           createdSpace = await createChatSpaceDirectly(spaceNameStr);
+
+          // Googleのサーバー内でのスペース情報の同期（タイムラグ）を待機するため、1.5秒だけ待つ
+          updateProgress('スペースの準備を待機中...', 0, 100);
+          await new Promise(resolve => setTimeout(resolve, 1500));
 
           // 2. メンバー招待API呼び出し（失敗リストを返す）
           const failedEmails = await inviteMembersDirectly(createdSpace.name, memberOptions, updateProgress);
@@ -1524,10 +1528,10 @@
               );
 
               if (!response.ok) {
-                if (response.status === 429) {
-                  // Rate Limit hit. Wait and retry.
+                // 429(レート制限)や、スペース作成直後のタイムラグによる400エラー、および500系サーバーエラーの場合はリトライする
+                if ([429, 400, 500, 502, 503].includes(response.status)) {
                   retryCount++;
-                  console.warn(`Rate limit (429) hit for ${memberOpt.email}. Retrying ${retryCount}/3...`);
+                  console.warn(`Transient error (${response.status}) hit for ${memberOpt.email}. Retrying ${retryCount}/3...`);
                   await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount))); // 2s, 4s, 8s
                   continue;
                 }
