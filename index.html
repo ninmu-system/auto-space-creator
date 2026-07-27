@@ -1565,8 +1565,8 @@
               
               success = true; // 成功 または 409(既に参加済) の場合はループを抜ける
 
-              // Rate Limit 回避のための基本待機（0.2秒 -> 0.5秒へ延長して安全に）
-              await new Promise(resolve => setTimeout(resolve, 500));
+              // Rate Limit 回避のための基本待機（エラー自動リトライ機能があるため、0.1秒に短縮して高速化）
+              await new Promise(resolve => setTimeout(resolve, 100));
             } catch (e) {
               console.error(`Network error for ${memberOpt.email}:`, e);
               failedEmails.push(memberOpt.email);
