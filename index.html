@@ -1433,39 +1433,60 @@
         const failedEmails = [];
 
         for (const memberOpt of memberOptions) {
-          try {
-            const roleStr = 'ROLE_MEMBER';
-            const response = await fetch(
-              `https://chat.googleapis.com/v1/${spaceResourceName}/members`,
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  member: {
-                    name: `users/${memberOpt.email}`,
-                    type: 'HUMAN',
-                  },
-                  role: roleStr,
-                }),
-              }
-            );
+          let retryCount = 0;
+          let success = false;
 
-            if (!response.ok) {
-              const errData = await response.json();
-              if (response.status !== 409) {
-                console.error(`Invite failed for ${memberOpt.email}:`, errData);
-                failedEmails.push(memberOpt.email);
-              } else {
-                console.warn(`${memberOpt.email} is already in the space (Ignored 409).`);
+          while (retryCount < 3 && !success) {
+            try {
+              const roleStr = 'ROLE_MEMBER';
+              const response = await fetch(
+                `https://chat.googleapis.com/v1/${spaceResourceName}/members`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    member: {
+                      name: `users/${memberOpt.email}`,
+                      type: 'HUMAN',
+                    },
+                    role: roleStr,
+                  }),
+                }
+              );
+
+              if (!response.ok) {
+                if (response.status === 429) {
+                  // Rate Limit hit. Wait and retry.
+                  retryCount++;
+                  console.warn(`Rate limit (429) hit for ${memberOpt.email}. Retrying ${retryCount}/3...`);
+                  await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount))); // 2s, 4s, 8s
+                  continue;
+                }
+
+                const errData = await response.json();
+                if (response.status !== 409) {
+                  console.error(`Invite failed for ${memberOpt.email}:`, errData);
+                  failedEmails.push(memberOpt.email);
+                } else {
+                  console.warn(`${memberOpt.email} is already in the space (Ignored 409).`);
+                }
               }
+              
+              success = true; // 成功 または 409(既に参加済) の場合はループを抜ける
+
+              // Rate Limit 回避のための基本待機（0.2秒 -> 0.5秒へ延長して安全に）
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (e) {
+              console.error(`Network error for ${memberOpt.email}:`, e);
+              failedEmails.push(memberOpt.email);
+              break;
             }
-            // Rate Limit 回避のための 0.2秒待機
-            await new Promise(resolve => setTimeout(resolve, 200));
-          } catch (e) {
-            console.error(`Network error for ${memberOpt.email}:`, e);
+          }
+
+          if (!success && retryCount >= 3) {
             failedEmails.push(memberOpt.email);
           }
         }
