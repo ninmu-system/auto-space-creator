@@ -1321,6 +1321,14 @@
 
       let isExecutingSpace = false; // 連打防止用のロック変数
 
+      // 実行中の誤操作（タブ閉じ・リロード）を防止するストッパー
+      window.addEventListener('beforeunload', function (e) {
+        if (isExecutingSpace) {
+          e.preventDefault();
+          e.returnValue = ''; // ブラウザ標準の警告ダイアログを表示
+        }
+      });
+
       async function executeSpaceCreation() {
         if (isExecutingSpace) return;
         isExecutingSpace = true;
