@@ -540,11 +540,11 @@
        */
       // GCPで発行した OAuth 2.0 クライアントID
       const CLIENT_ID =
-        '274759489412-vtj4vke7frchteo6v7mv3ouuah9rgdtm.apps.googleusercontent.com';
+        '102303138881-3ljqc0pbdl69qeqof78r9369cnu8783b.apps.googleusercontent.com';
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbwIE8_MMHhuAbQCpCoudUxjjP012fi32eNBPpfjh67mGpqVlEiQK_4t3W4xRwOli3BP/exec';
+        'https://script.google.com/macros/s/AKfycbxSsp8L6bKa5qGRFKazHIw7pFgeNYF6gj6MOY3gt7Atyc-hGkgeCW6x8EZn-OvizQ/exec';
 
       // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
       const DEPARTMENTS = [
@@ -1338,12 +1338,33 @@
           updateProgress('スペース作成中...', 0, 100);
           createdSpace = await createChatSpaceDirectly(spaceNameStr);
 
-          // 2. メンバー招待API呼び出し（1人でも失敗したら例外を投げる）
-          await inviteMembersDirectly(createdSpace.name, memberOptions, updateProgress);
+          // 2. メンバー招待API呼び出し（失敗リストを返す）
+          const failedEmails = await inviteMembersDirectly(createdSpace.name, memberOptions, updateProgress);
 
           // 3. 全員へのメンション付き初期メッセージを投稿（スマホのプッシュ通知を鳴らすため）
           updateProgress('スペース作成の仕上げ中...', 100, 100);
           await postInitialMessage(createdSpace.name);
+
+          // エラーがあった場合の処理（お知らせメール送信対象から除外＆エラーメール送信）
+          let warningMsg = '';
+          if (failedEmails.length > 0) {
+            // 失敗した人を通常のお知らせメールの送信対象から除外
+            emails = emails.filter(e => !failedEmails.includes(e));
+            
+            // エラー者向けに設定変更のお願いメールを送信
+            updateProgress('エラー対象者へ設定変更のお願いメールを送信中...', 0, 100);
+            try {
+              await callGasApi({
+                action: 'sendErrorNotifications',
+                spaceNameStr: spaceNameStr,
+                failedEmails: failedEmails
+              });
+            } catch (e) {
+              console.error('エラーメール送信失敗:', e);
+            }
+
+            warningMsg = `\n\n【⚠警告: 一部のメンバーが招待できませんでした】\n以下のメンバーはチャット設定等により自動招待がブロックされたため、システムから「設定変更のお願いメール」を自動送信しました。\n本人の設定変更完了後、手動でスペースに追加してください。\n${failedEmails.join('\n')}`;
+          }
 
           // 4. GAS側にメール通知の一斉送信をリクエスト（20件ずつのチャンクに分割して進捗を表示）
           const chunkSize = 20;
@@ -1364,12 +1385,12 @@
           const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
           const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
 
-          const successMsg = `スペースの作成、メンバーの招待、および通知（チャット・メール）が正常に完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>`;
+          const successMsg = `スペースの作成、メンバーの招待、および通知（チャット・メール）が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>${warningMsg}`;
 
           // 成功時の画面遷移
           showResultScreen(
             true,
-            '作成＆招待 成功',
+            failedEmails.length > 0 ? '作成完了（一部エラーあり）' : '作成＆招待 成功',
             successMsg
           );
         } catch (error) {
@@ -1522,17 +1543,13 @@
           }
           
           completed++;
-          if (onProgress) onProgress(`メンバー招待中... (現在 ${completed}人 / ${total}人完了)`, completed, total);
+          if (onProgress) {
+            const errorText = failedEmails.length > 0 ? ` ⚠️エラー${failedEmails.length}人` : '';
+            onProgress(`メンバー招待中... (現在 ${completed}人 / ${total}人完了)${errorText}`, completed, total);
+          }
         }
 
-        // 1件でも失敗があればエラーを投げる
-        if (failedEmails.length > 0) {
-          throw new Error(
-            `以下のユーザーの招待に失敗しました（Gmail以外のアドレスが含まれている可能性があります）:\n${failedEmails.join(
-              '\n'
-            )}`
-          );
-        }
+        return failedEmails;
       }
 
       /**
