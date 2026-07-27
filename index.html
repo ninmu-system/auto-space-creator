@@ -706,21 +706,22 @@
             accessToken = tokenResponse.access_token;
             const isValidUser = await fetchUserInfo();
             if (isValidUser) {
-              // バックエンドの検証もすべてクリアした場合
+              // ログイン成功！とはまだ言わず、バックエンドの検証（マスタデータ照合など）を待つ
               if (btn) {
-                btn.innerText = 'ログイン成功！';
-                btn.style.backgroundColor = '#059669'; // 成功を示す緑色
-              }
-              
-              // 成功メッセージを少し見せた後、読み込み中表示に変更してAPI通信を待つ
-              await new Promise(resolve => setTimeout(resolve, 800));
-              if (btn) {
-                btn.innerText = 'システムデータを読み込み中...';
+                btn.innerText = '権限とシステムデータを照合中...';
               }
 
-              await checkStatusAndRoute();
+              const success = await checkStatusAndRoute();
+              if (!success) {
+                // バックエンドエラー（マスタデータ未登録など）で弾かれた場合、ボタンを元に戻す
+                if (btn) {
+                  btn.innerText = 'Googleでログイン';
+                  btn.disabled = false;
+                  btn.style.backgroundColor = '#2563eb';
+                }
+              }
             } else {
-              // 権限エラー等で失敗した場合、ボタンを元に戻す
+              // フロントエンドの権限エラー（VIP以外の外部アドレス等）で失敗した場合、ボタンを元に戻す
               if (btn) {
                 btn.innerText = 'Googleでログイン';
                 btn.disabled = false;
@@ -834,6 +835,7 @@
             ).innerHTML = `<div class="user-info-wrapper"><span>ログイン中: <strong>${currentUserEmail}</strong></span><button class="logout-btn" onclick="manualLogout()">ログアウト</button></div>\n班編成データをここ（ドライブ上）にアップロードすることで招待可能になります。最初に作成する方が一度アップロードすれば再アップロードは不要です。班編成に修正がある場合は再アップロードしてください。`;
             showAdminMessage('', false); // メッセージをクリア
           }
+          return true; // 成功
         } catch (error) {
           if (error.message === 'GAS_AUTH_REQUIRED') {
             const authMsg = `バックエンドの再認証が必要です。<br><br><a href="${GAS_API_URL}" target="_blank" style="color:#2563eb;text-decoration:underline;font-weight:bold;">👉 ここをクリックして認証ページを開く</a><br><br>※開いた先の画面で「詳細を表示」＞「安全ではないページに移動」をクリックして許可を完了させた後、<strong>この画面をリロード（再読み込み）</strong>してください。`;
@@ -844,6 +846,7 @@
           } else {
             alert('ステータス確認に失敗しました: ' + error.message);
           }
+          return false; // 失敗
         }
       }
 
