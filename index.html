@@ -544,7 +544,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbxSsp8L6bKa5qGRFKazHIw7pFgeNYF6gj6MOY3gt7Atyc-hGkgeCW6x8EZn-OvizQ/exec';
+        'https://script.google.com/macros/s/AKfycbwIE8_MMHhuAbQCpCoudUxjjP012fi32eNBPpfjh67mGpqVlEiQK_4t3W4xRwOli3BP/exec';
 
       // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
       const DEPARTMENTS = [
@@ -885,6 +885,7 @@
           // ファイル選択状態をリセット
           document.getElementById('fileInput').value = '';
 
+          resetSpaceCreation(); // メイン画面のステップを初期状態（条件入力）に戻す
           await checkStatusAndRoute(); // 画面を未アップロード状態に戻す
           
           if (btn) {
