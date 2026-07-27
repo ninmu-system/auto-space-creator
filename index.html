@@ -235,6 +235,32 @@
           transform: rotate(360deg);
         }
       }
+      .user-info-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .logout-btn {
+        padding: 4px 12px;
+        font-size: 0.8em;
+        background-color: #94a3b8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        flex-shrink: 0;
+      }
+      .logout-btn:hover {
+        background-color: #64748b;
+      }
+      @media (max-width: 600px) {
+        .user-info-wrapper {
+          flex-direction: column;
+          gap: 6px;
+        }
+      }
     </style>
     <!-- SheetJS for Excel Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -506,11 +532,11 @@
        */
       // GCPで発行した OAuth 2.0 クライアントID
       const CLIENT_ID =
-        '274759489412-vtj4vke7frchteo6v7mv3ouuah9rgdtm.apps.googleusercontent.com';
+        '102303138881-3ljqc0pbdl69qeqof78r9369cnu8783b.apps.googleusercontent.com';
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbwtgqjtMADy0Dl3qMlXbEuD-9l5Nc7Ks5bROJfRDwmq5R3EOR3rLTi6n_h-G7K-elEu/exec';
+        'https://script.google.com/macros/s/AKfycbz_5_DqaU1GQPJF5_3zdnxCt1bN9J_9Plkphk7dJ5tpyES5l4QgpJhFM8UH9euIU-cPVg/exec';
 
       // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
       const DEPARTMENTS = [
@@ -558,6 +584,23 @@
         document.getElementById('login-card').classList.add('active');
         
         // ログインボタンの見た目を初期状態に戻す
+        const btn = document.getElementById('login-btn');
+        if (btn) {
+          btn.innerText = 'Googleでログイン';
+          btn.disabled = false;
+          btn.style.backgroundColor = '#2563eb';
+        }
+      }
+
+      function manualLogout() {
+        if (!confirm('ログアウトしてログイン画面に戻りますか？')) return;
+        accessToken = '';
+        currentUserEmail = '';
+        if (logoutTimer) clearTimeout(logoutTimer);
+        resetSpaceCreation();
+        document.getElementById('main-card').classList.remove('active');
+        document.getElementById('admin-card').classList.remove('active');
+        document.getElementById('login-card').classList.add('active');
         const btn = document.getElementById('login-btn');
         if (btn) {
           btn.innerText = 'Googleでログイン';
@@ -660,6 +703,13 @@
                 btn.innerText = 'ログイン成功！';
                 btn.style.backgroundColor = '#059669'; // 成功を示す緑色
               }
+              
+              // 成功メッセージを少し見せた後、読み込み中表示に変更してAPI通信を待つ
+              await new Promise(resolve => setTimeout(resolve, 800));
+              if (btn) {
+                btn.innerText = 'システムデータを読み込み中...';
+              }
+
               await checkStatusAndRoute();
             } else {
               // 権限エラー等で失敗した場合、ボタンを元に戻す
@@ -711,7 +761,7 @@
 
           document.getElementById(
             'main-user-info'
-          ).innerText = `ログイン中: ${currentUserEmail}`; // 一時的に表示
+          ).innerHTML = `<div class="user-info-wrapper"><span>ログイン中: <strong>${currentUserEmail}</strong></span><button class="logout-btn" onclick="manualLogout()">ログアウト</button></div>`; // 一時的に表示
           
           // ログイン成功時に自動ログアウトのタイマーを開始
           resetLogoutTimer();
@@ -764,7 +814,7 @@
             const fileNameDisplay = data.fileName ? `\n登録中のファイル: 【 ${data.fileName} 】` : '';
             document.getElementById(
               'main-user-info'
-            ).innerHTML = `ログイン中: <strong>${currentUserEmail}</strong><hr style="margin: 12px 0; border: none; border-top: 1px solid #cbd5e1;">班編成データアップロード済み：招待可能<span style="font-size: 0.9em; color: #6b7280;">${fileNameDisplay}</span>`;
+            ).innerHTML = `<div class="user-info-wrapper"><span>ログイン中: <strong>${currentUserEmail}</strong></span><button class="logout-btn" onclick="manualLogout()">ログアウト</button></div><hr style="margin: 12px 0; border: none; border-top: 1px solid #cbd5e1;">班編成データアップロード済み：招待可能<span style="font-size: 0.9em; color: #6b7280;">${fileNameDisplay}</span>`;
             showMessage('', false); // メッセージをクリア
           } else {
             // パターンA: 未アップロード
@@ -773,7 +823,7 @@
             document.getElementById('admin-card').classList.add('active');
             document.getElementById(
               'admin-user-info'
-            ).innerText = `ログイン中: ${currentUserEmail}\n班編成データをここ（ドライブ上）にアップロードすることで招待可能になります。最初に作成する方が一度アップロードすれば再アップロードは不要です。班編成に修正がある場合は再アップロードしてください。`;
+            ).innerHTML = `<div class="user-info-wrapper"><span>ログイン中: <strong>${currentUserEmail}</strong></span><button class="logout-btn" onclick="manualLogout()">ログアウト</button></div>\n班編成データをここ（ドライブ上）にアップロードすることで招待可能になります。最初に作成する方が一度アップロードすれば再アップロードは不要です。班編成に修正がある場合は再アップロードしてください。`;
             showAdminMessage('', false); // メッセージをクリア
           }
         } catch (error) {
@@ -797,7 +847,7 @@
         document.getElementById('admin-card').classList.add('active');
         document.getElementById(
           'admin-user-info'
-        ).innerText = `ログイン中: ${currentUserEmail}\n新しいExcelファイルをアップロードして上書きできます`;
+        ).innerHTML = `<div class="user-info-wrapper"><span>ログイン中: <strong>${currentUserEmail}</strong></span><button class="logout-btn" onclick="manualLogout()">ログアウト</button></div>\n新しいExcelファイルをアップロードして上書きできます`;
       }
 
       async function deleteRosterData() {
