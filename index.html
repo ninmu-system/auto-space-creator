@@ -264,6 +264,22 @@
           gap: 6px;
         }
       }
+      .info-box {
+        margin-top: 20px;
+        padding: 16px;
+        background-color: #f3f4f6;
+        border-radius: 8px;
+        text-align: left;
+        color: var(--text-muted);
+        line-height: 1.6;
+        font-size: 0.95rem;
+      }
+      @media (max-width: 767px) {
+        .info-box {
+          font-size: 0.85rem;
+          padding: 12px;
+        }
+      }
     </style>
     <!-- SheetJS for Excel Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -294,20 +310,9 @@
       </div>
 
       <button id="login-btn" onclick="handleAuthClick()">Googleでログイン</button>
-      <div
-        style="
-          margin-top: 20px;
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          text-align: left;
-          line-height: 1.6;
-          padding: 12px;
-          background: #f3f4f6;
-          border-radius: 8px;
-        "
-      >
-        <big>※ログイン時、初回のみ「このアプリはGoogleで確認されていません」と出ますが正常の動作ですので、「<b>詳細</b>」ボタンを押して「<b>ninmu-system.github.io（安全ではないページ）に移動</b>」をタップしてください。<br />
-        ※招待される側のgoogle chatの設定で「<b>あなたをスペースに招待できるユーザー</b>」が「<b>全員</b>」になっていなければ、招待メールが届かずスペースへの参加もできません。</big>
+      <div class="info-box">
+        ※ログイン時、初回のみ「このアプリはGoogleで確認されていません」と出ますが正常の動作ですので、「<b>詳細</b>」ボタンを押して「<b>ninmu-system.github.io（安全ではないページ）に移動</b>」をタップしてください。<br />
+        ※招待される側のgoogle chatの設定で「<b>あなたをスペースに招待できるユーザー</b>」が「<b>全員</b>」になっていなければ、招待メールが届かずスペースへの参加もできません。
       </div>
     </div>
 
@@ -1372,13 +1377,13 @@
           updateProgress('スペース作成完了！', 100, 100);
 
           // 2. 完了画面に遷移させ、「作成完了・招待開始」として表示
-          const waitingHtml = '<div style="margin-top:20px; padding:12px; background-color:#f3f4f6; border-radius:8px; text-align:left; font-size:0.75rem; color:#64748b; line-height:1.6;">' +
+          const waitingHtml = '<div class="info-box">' +
             '※ このページで待つと、招待完了時にお知らせします。<br>' +
             '※ ページを閉じても裏側で処理は続行されます。<br>' +
             '※ 万が一エラーがあった場合はメールに通知します。' +
-            '<div id="async-spinner-container" style="text-align:center; margin-top:15px;">' +
-            '<div class="spinner" style="display:block; margin:0 auto; width:20px; height:20px; border-width:3px; border-color:var(--primary-color); border-bottom-color:transparent;"></div>' +
-            '<span style="display:block; font-size:1em; margin-top:6px;">サーバーで処理中...</span>' +
+            '<div id="async-spinner-container" style="text-align:center; margin-top:20px;">' +
+            '<div class="spinner" style="display:block; margin:0 auto; width:22px; height:22px; border-width:3px; border-color:var(--primary-color); border-bottom-color:transparent;"></div>' +
+            '<span style="display:block; font-size:0.95em; margin-top:8px;">サーバーで処理中...</span>' +
             '</div></div>';
           showResultScreen(true, '作成完了・招待開始', waitingHtml);
 
