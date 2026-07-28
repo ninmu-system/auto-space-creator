@@ -1373,15 +1373,15 @@
 
           // 2. 完了画面に遷移させ、「作成完了・招待開始」として表示
           const waitingHtml = `
-            <div style="margin-top: 10px; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
-              <ul style="color: #475569; font-size: 0.95em; line-height: 1.6; padding-left: 20px; margin-bottom: 0;">
-                <li>このページで待つと、招待まで完了した際にお知らせします。</li>
-                <li><strong>もちろんページを閉じても構いません</strong>（裏側で処理が続行されます）。</li>
-                <li>万が一招待できないエラーがあった場合は、あなたのメールアドレスに通知します。</li>
+            <div style="margin-top: 15px; padding: 12px 16px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
+              <ul style="color: #475569; font-size: 0.9em; line-height: 1.4; padding-left: 20px; margin-bottom: 0;">
+                <li>このページで待つと、招待完了時にお知らせします。</li>
+                <li><strong>ページを閉じても裏側で処理は続行されます。</strong></li>
+                <li>エラーがあった場合はメールに通知します。</li>
               </ul>
-              <div id="async-spinner-container" style="text-align: center; margin-top: 25px;">
-                <div class="spinner" style="display: inline-block; width: 24px; height: 24px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
-                <span style="display: block; color: #64748b; font-size: 0.85em; margin-top: 8px;">サーバーでメンバー追加・メール送信中...</span>
+              <div id="async-spinner-container" style="text-align: center; margin-top: 15px;">
+                <div class="spinner" style="display: block; margin: 0 auto; width: 24px; height: 24px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
+                <span style="display: block; color: #64748b; font-size: 0.85em; margin-top: 8px;">メンバー追加・メール送信中...</span>
               </div>
             </div>
           `;
