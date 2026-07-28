@@ -545,7 +545,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbwIE8_MMHhuAbQCpCoudUxjjP012fi32eNBPpfjh67mGpqVlEiQK_4t3W4xRwOli3BP/exec';
+        'https://script.google.com/macros/s/AKfycbw08mOWz9cpQ34XlY0QuLleaoO94l8fsjJjREr2DbR0BZZG68ZDl0pcxjbG_EkDd1lv/exec';
 
       // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
       const DEPARTMENTS = [
@@ -824,7 +824,7 @@
             btn.style.backgroundColor = '#059669'; // 成功を示す緑色
           }
           // 成功の文字を少し見せてから画面を切り替える
-          await new Promise(resolve => setTimeout(resolve, 800));
+          await new Promise(resolve => setTimeout(resolve, 200));
 
           if (data.uploaded) {
             // パターンB: アップロード済み
