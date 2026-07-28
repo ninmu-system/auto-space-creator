@@ -1372,18 +1372,14 @@
           updateProgress('スペース作成完了！', 100, 100);
 
           // 2. 完了画面に遷移させ、「作成完了・招待開始」として表示
-          const waitingHtml = `
-            <div style="margin-top: 20px; padding: 12px; background-color: #f3f4f6; border-radius: 8px; text-align: left; font-size: 0.75rem; color: #64748b; line-height: 1.6;">
-              ※ このページで待つと、招待完了時にお知らせします。<br>
-              ※ ページを閉じても裏側で処理は続行されます。<br>
-              ※ 万が一エラーがあった場合はメールに通知します。
-              
-              <div id="async-spinner-container" style="text-align: center; margin-top: 15px;">
-                <div class="spinner" style="display: block; margin: 0 auto; width: 20px; height: 20px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
-                <span style="display: block; font-size: 1em; margin-top: 6px;">サーバーで処理中...</span>
-              </div>
-            </div>
-          `;
+          const waitingHtml = '<div style="margin-top:20px; padding:12px; background-color:#f3f4f6; border-radius:8px; text-align:left; font-size:0.75rem; color:#64748b; line-height:1.6;">' +
+            '※ このページで待つと、招待完了時にお知らせします。<br>' +
+            '※ ページを閉じても裏側で処理は続行されます。<br>' +
+            '※ 万が一エラーがあった場合はメールに通知します。' +
+            '<div id="async-spinner-container" style="text-align:center; margin-top:15px;">' +
+            '<div class="spinner" style="display:block; margin:0 auto; width:20px; height:20px; border-width:3px; border-color:var(--primary-color); border-bottom-color:transparent;"></div>' +
+            '<span style="display:block; font-size:1em; margin-top:6px;">サーバーで処理中...</span>' +
+            '</div></div>';
           showResultScreen(true, '作成完了・招待開始', waitingHtml);
 
           // バックグラウンド処理に移行したため、タブ閉じ警告を解除
