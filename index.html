@@ -545,7 +545,7 @@
 
       // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
       const GAS_API_URL =
-        'https://script.google.com/macros/s/AKfycbw08mOWz9cpQ34XlY0QuLleaoO94l8fsjJjREr2DbR0BZZG68ZDl0pcxjbG_EkDd1lv/exec';
+        'https://script.google.com/macros/s/AKfycbwIE8_MMHhuAbQCpCoudUxjjP012fi32eNBPpfjh67mGpqVlEiQK_4t3W4xRwOli3BP/exec';
 
       // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
       const DEPARTMENTS = [
@@ -1323,7 +1323,7 @@
 
       // 実行中の誤操作（タブ閉じ・リロード）を防止するストッパー
       window.addEventListener('beforeunload', function (e) {
-        if (isExecutingSpace) {
+        if (isExecutingSpace && !window.allowBackgroundExecution) {
           e.preventDefault();
           e.returnValue = ''; // ブラウザ標準の警告ダイアログを表示
         }
@@ -1367,59 +1367,47 @@
           const spaceNameStr = `【${eventName}】${selectedDept}`;
 
           // 1. スペース作成API呼び出し
-          updateProgress('スペース作成中...', 0, 100);
+          updateProgress('スペース枠組み作成中...', 0, 100);
           createdSpace = await createChatSpaceDirectly(spaceNameStr);
+          updateProgress('スペース作成完了！', 100, 100);
 
-          // Googleのサーバー内でのスペース情報の同期（タイムラグ）を待機するため、1.5秒だけ待つ
-          updateProgress('スペースの準備を待機中...', 0, 100);
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // 2. 画面UIを「作成完了・招待開始」に切り替え、案内文を表示
+          progressContainer.innerHTML = `
+            <div style="margin-top: 20px; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
+              <h3 style="color: var(--primary-color); margin-top: 0; font-size: 1.2em; text-align: center;">🎉 作成完了・招待開始</h3>
+              <ul style="color: #475569; font-size: 0.95em; line-height: 1.6; padding-left: 20px; margin-bottom: 0;">
+                <li>このページで待つと、招待まで完了した際にお知らせします。</li>
+                <li><strong>もちろんページを閉じても構いません</strong>（裏側で処理が続行されます）。</li>
+                <li>万が一招待できないエラーがあった場合は、あなたのメールアドレスに通知します。</li>
+              </ul>
+              <div style="text-align: center; margin-top: 25px;">
+                <div class="spinner" style="display: inline-block; width: 24px; height: 24px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
+                <span style="display: block; color: #64748b; font-size: 0.85em; margin-top: 8px;">サーバーでメンバー追加・メール送信中...</span>
+              </div>
+            </div>
+          `;
+          
+          // バックグラウンド処理に移行したため、タブ閉じ警告を解除
+          window.allowBackgroundExecution = true;
 
-          // 2. メンバー招待API呼び出し（失敗リストを返す）
-          const failedEmails = await inviteMembersDirectly(createdSpace.name, memberOptions, updateProgress);
+          // 3. GASにバックグラウンド処理を丸投げ
+          const response = await callGasApi({
+             action: 'inviteAndNotifyAsynchronously',
+             spaceResourceName: createdSpace.name,
+             spaceNameStr: spaceNameStr,
+             members: memberOptions,
+             accessToken: accessToken
+          });
 
-          // 3. 全員へのメンション付き初期メッセージを投稿（スマホのプッシュ通知を鳴らすため）
-          updateProgress('スペース作成の仕上げ中...', 100, 100);
-          await postInitialMessage(createdSpace.name);
-
-          // エラーがあった場合の処理（お知らせメール送信対象から除外＆エラーメール送信）
-          let warningMsg = '';
-          if (failedEmails.length > 0) {
-            // 失敗した人を通常のお知らせメールの送信対象から除外
-            emails = emails.filter(e => !failedEmails.includes(e));
-            
-            // エラー者向けに設定変更のお願いメールを送信
-            updateProgress('エラー対象者へ設定変更のお願いメールを送信中...', 0, 100);
-            try {
-              await callGasApi({
-                action: 'sendErrorNotifications',
-                spaceNameStr: spaceNameStr,
-                failedEmails: failedEmails
-              });
-            } catch (e) {
-              console.error('エラーメール送信失敗:', e);
-            }
-
-            warningMsg = `\n\n【⚠警告: 一部のメンバーが招待できませんでした】\n以下のメンバーはチャット設定等により自動招待がブロックされたため、システムから「設定変更のお願いメール」を自動送信しました。\n本人の設定変更完了後、手動でスペースに追加してください。\n${failedEmails.join('\n')}`;
-          }
-
-          // 4. GAS側にメール通知の一斉送信をリクエスト（20件ずつのチャンクに分割して進捗を表示）
-          const chunkSize = 20;
-          let sentEmailsCount = 0;
-          for (let i = 0; i < emails.length; i += chunkSize) {
-            const chunk = emails.slice(i, i + chunkSize);
-            updateProgress(`お知らせメール送信中... (現在 ${sentEmailsCount}人 / ${emails.length}人完了)`, sentEmailsCount, emails.length);
-            await callGasApi({
-              action: 'sendNotifications',
-              spaceNameStr: spaceNameStr,
-              spaceId: createdSpace.name,
-              emails: chunk
-            });
-            sentEmailsCount += chunk.length;
-            updateProgress(`お知らせメール送信中... (現在 ${sentEmailsCount}人 / ${emails.length}人完了)`, sentEmailsCount, emails.length);
-          }
-
+          // 4. 完了画面表示（画面を開いたまま待ってくれた場合）
           const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
           const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
+          const failedEmails = response.failedEmails || [];
+
+          let warningMsg = '';
+          if (failedEmails.length > 0) {
+            warningMsg = `\n\n【⚠警告: 一部のメンバーが招待できませんでした】\n以下のメンバーは追加に失敗しました。詳細は結果報告メールをご確認の上、手動で追加してください。\n${failedEmails.join('\n')}`;
+          }
 
           const successMsg = `スペースの作成、メンバーの招待、および通知（チャット・メール）が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>${warningMsg}`;
 
