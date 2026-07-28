@@ -1371,22 +1371,22 @@
           createdSpace = await createChatSpaceDirectly(spaceNameStr);
           updateProgress('スペース作成完了！', 100, 100);
 
-          // 2. 画面UIを「作成完了・招待開始」に切り替え、案内文を表示
-          progressContainer.innerHTML = `
-            <div style="margin-top: 20px; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
-              <h3 style="color: var(--primary-color); margin-top: 0; font-size: 1.2em; text-align: center;">🎉 作成完了・招待開始</h3>
+          // 2. 完了画面に遷移させ、「作成完了・招待開始」として表示
+          const waitingHtml = `
+            <div style="margin-top: 10px; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
               <ul style="color: #475569; font-size: 0.95em; line-height: 1.6; padding-left: 20px; margin-bottom: 0;">
                 <li>このページで待つと、招待まで完了した際にお知らせします。</li>
                 <li><strong>もちろんページを閉じても構いません</strong>（裏側で処理が続行されます）。</li>
                 <li>万が一招待できないエラーがあった場合は、あなたのメールアドレスに通知します。</li>
               </ul>
-              <div style="text-align: center; margin-top: 25px;">
+              <div id="async-spinner-container" style="text-align: center; margin-top: 25px;">
                 <div class="spinner" style="display: inline-block; width: 24px; height: 24px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
                 <span style="display: block; color: #64748b; font-size: 0.85em; margin-top: 8px;">サーバーでメンバー追加・メール送信中...</span>
               </div>
             </div>
           `;
-          
+          showResultScreen(true, '作成完了・招待開始', waitingHtml);
+
           // バックグラウンド処理に移行したため、タブ閉じ警告を解除
           window.allowBackgroundExecution = true;
 
@@ -1399,7 +1399,7 @@
              accessToken: accessToken
           });
 
-          // 4. 完了画面表示（画面を開いたまま待ってくれた場合）
+          // 4. 完了時（画面を開いたまま待ってくれた場合）、既存の完了画面の中身をアップデートする
           const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
           const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
           const failedEmails = response.failedEmails || [];
@@ -1411,12 +1411,10 @@
 
           const successMsg = `スペースの作成、メンバーの招待、および通知（チャット・メール）が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>${warningMsg}`;
 
-          // 成功時の画面遷移
-          showResultScreen(
-            true,
-            failedEmails.length > 0 ? '作成完了（一部エラーあり）' : '作成＆招待 成功',
-            successMsg
-          );
+          const isPartialError = failedEmails.length > 0;
+          document.getElementById('result-title').innerText = isPartialError ? '作成完了（一部エラーあり）' : '作成＆招待 成功';
+          document.getElementById('result-title').style.color = isPartialError ? '#991B1B' : 'var(--primary-color)';
+          document.getElementById('result-desc').innerHTML = successMsg.replace(/\n/g, '<br>');
         } catch (error) {
           // エラー時のロールバックと画面遷移
           console.error('Execution Error:', error);
