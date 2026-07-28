@@ -1373,15 +1373,14 @@
 
           // 2. 完了画面に遷移させ、「作成完了・招待開始」として表示
           const waitingHtml = `
-            <div style="margin-top: 15px; padding: 12px 16px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
-              <ul style="color: #475569; font-size: 0.9em; line-height: 1.4; padding-left: 20px; margin-bottom: 0;">
-                <li>このページで待つと、招待完了時にお知らせします。</li>
-                <li><strong>ページを閉じても裏側で処理は続行されます。</strong></li>
-                <li>エラーがあった場合はメールに通知します。</li>
-              </ul>
+            <div style="margin-top: 20px; padding: 12px; background-color: #f3f4f6; border-radius: 8px; text-align: left; font-size: 0.75rem; color: #64748b; line-height: 1.6;">
+              ※ このページで待つと、招待完了時にお知らせします。<br>
+              ※ ページを閉じても裏側で処理は続行されます。<br>
+              ※ 万が一エラーがあった場合はメールに通知します。
+              
               <div id="async-spinner-container" style="text-align: center; margin-top: 15px;">
-                <div class="spinner" style="display: block; margin: 0 auto; width: 24px; height: 24px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
-                <span style="display: block; color: #64748b; font-size: 0.85em; margin-top: 8px;">メンバー追加・メール送信中...</span>
+                <div class="spinner" style="display: block; margin: 0 auto; width: 20px; height: 20px; border-width: 3px; border-color: var(--primary-color); border-bottom-color: transparent;"></div>
+                <span style="display: block; font-size: 1em; margin-top: 6px;">サーバーで処理中...</span>
               </div>
             </div>
           `;
