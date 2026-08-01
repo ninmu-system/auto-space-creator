@@ -410,7 +410,7 @@
     </button>
 
     <button id="syncBtn" onclick="syncMasterData()" style="margin-top: 15px; background-color: #4b5563;">
-      <span id="sync-btn-text">🔄 マスタデータを手動同期する</span>
+      <span id="sync-btn-text">マスタデータを手動同期する</span>
       <div class="spinner" id="sync-spinner"></div>
     </button>
 
@@ -966,7 +966,7 @@
         document.getElementById('fileInput').value = '';
 
         resetSpaceCreation(); // メイン画面のステップを初期状態（条件入力）に戻す
-        
+
         // 削除完了後、即座にアップロード画面へ遷移（API確認をスキップして高速化）
         document.getElementById('login-card').classList.remove('active');
         document.getElementById('main-card').classList.remove('active');
@@ -1083,7 +1083,7 @@
           const text = document.getElementById('upload-btn-text');
           const spinner = document.getElementById('upload-spinner');
           spinner.style.display = 'none';
-          text.innerText = '✅ アップロード成功！';
+          text.innerText = 'アップロード成功！';
           text.style.display = 'inline';
           // btn.disabled = true のまま待機
 
