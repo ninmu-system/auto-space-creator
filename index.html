@@ -605,7 +605,7 @@
 
     // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
     const GAS_API_URL =
-      'https://script.google.com/macros/s/AKfycbxF26vf7qmd2Nj_m-SieK9uIvDROWkZueo1BF4zIhWXk7bd6rHPIn-whFChfhz4_E9h/exec';
+      'https://script.google.com/macros/s/AKfycbzLytuwGyOs1kMwxqDmm9UAM8cJ9tFsMVZJsSuC68kfA8XnHef5sfxUj4oI0NaBU4b7/exec';
 
     // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
     const DEPARTMENTS = [
@@ -863,7 +863,12 @@
         }
         return data;
       } catch (error) {
-        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+        if (
+          error.message.includes('Failed to fetch') ||
+          error.name === 'TypeError' ||
+          error.name === 'SyntaxError' ||
+          error.message.includes('Unexpected token')
+        ) {
           throw new Error('GAS_AUTH_REQUIRED');
         }
         throw error;
