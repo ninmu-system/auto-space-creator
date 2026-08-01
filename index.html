@@ -409,6 +409,11 @@
       <div class="spinner" id="upload-spinner"></div>
     </button>
 
+    <button id="syncBtn" onclick="syncMasterData()" style="margin-top: 15px; background-color: #4b5563;">
+      <span id="sync-btn-text">🔄 マスタデータを手動同期する</span>
+      <div class="spinner" id="sync-spinner"></div>
+    </button>
+
     <div id="adminStatusMessage" class="message"></div>
   </div>
 
@@ -605,7 +610,7 @@
 
     // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
     const GAS_API_URL =
-      'https://script.google.com/macros/s/AKfycbzLytuwGyOs1kMwxqDmm9UAM8cJ9tFsMVZJsSuC68kfA8XnHef5sfxUj4oI0NaBU4b7/exec';
+      'https://script.google.com/macros/s/AKfycbylj3eAZ8tP4xvE759P7pGIYQqoLhiZ-vUl-C062TLeBvkQprB6cbNosoaZlOQq9FHl/exec';
 
     // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
     const DEPARTMENTS = [
@@ -1003,7 +1008,29 @@
         spinner.style.display = 'none';
       }
     }
+    function setSyncLoading(isLoading) {
+      const btn = document.getElementById('syncBtn');
+      const text = document.getElementById('sync-btn-text');
+      const spinner = document.getElementById('sync-spinner');
+      if (btn && text && spinner) {
+        btn.disabled = isLoading;
+        text.style.display = isLoading ? 'none' : 'inline';
+        spinner.style.display = isLoading ? 'block' : 'none';
+      }
+    }
 
+    async function syncMasterData() {
+      setSyncLoading(true);
+      showAdminMessage('', false);
+      try {
+        const data = await callGasApi({ action: 'syncMasterData' });
+        showAdminMessage(data.message || '同期が完了しました。', true);
+      } catch (error) {
+        showAdminMessage(error.message, false);
+      } finally {
+        setSyncLoading(false);
+      }
+    }
     function showAdminMessage(msg, isSuccess) {
       const msgDiv = document.getElementById('adminStatusMessage');
       msgDiv.innerText = msg;
