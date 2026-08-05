@@ -394,6 +394,22 @@
     </div>
   </div>
 
+  <!-- エラー専用画面 -->
+  <div class="card" id="error-card">
+    <h1 style="color: #dc2626; display: flex; align-items: center; gap: 8px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      通信エラー
+    </h1>
+    <p class="subtitle" id="error-message-info"
+      style="white-space: normal; background-color: #fee2e2; padding: 15px; border-radius: 8px; border: 1px solid #f87171;">
+    </p>
+  </div>
+
   <!-- STEP 2A: 管理者用アップロード画面 -->
   <div class="card" id="admin-card">
     <h1>班編成データアップロード</h1>
@@ -919,10 +935,10 @@
         return true; // 成功
       } catch (error) {
         if (error.message === 'GAS_AUTH_REQUIRED') {
-          const authMsg = `バックエンドの再認証が必要です。<br><br><a href="${GAS_API_URL}" target="_blank" style="color:#2563eb;text-decoration:underline;font-weight:bold;">👉 ここをクリックして認証ページを開く</a><br><br>※開いた先の画面で「詳細を表示」＞「安全ではないページに移動」をクリックして許可を完了させた後、<strong>この画面をリロード（再読み込み）</strong>してください。`;
+          const authMsg = `【セッション切れ】<br>長時間経過したため、安全のため通信が切断されました。<br><strong style="color:#dc2626; font-size:1.1em;">画面を更新（再読み込み）して、もう一度ログインしてください。</strong><br><br><span style="font-size:0.85em;color:#6b7280;">※何度更新してもこの画面が出る場合は、お使いのブラウザのセキュリティ制限が原因です。<a href="${GAS_API_URL}" target="_blank" style="color:#2563eb;text-decoration:underline;">👉こちら</a>をクリックして一度Googleの画面を開いてから、再度更新してください。</span>`;
           document.getElementById('login-card').classList.remove('active');
-          document.getElementById('admin-card').classList.add('active');
-          document.getElementById('admin-user-info').innerHTML = authMsg;
+          document.getElementById('error-card').classList.add('active');
+          document.getElementById('error-message-info').innerHTML = authMsg;
           showAdminMessage('', false);
         } else {
           alert('ステータス確認に失敗しました: ' + error.message);
@@ -1715,6 +1731,18 @@
         msgDiv.style.display = 'none';
       }
     }
+  </script>
+  <!-- テスト用の強制表示スクリプト -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // 全てのカードを非表示にする
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+
+      // エラーカードを表示する
+      const authMsg = `【セッション切れ】<br>長時間経過したため、安全のため通信が切断されました。<br><strong style="color:#dc2626; font-size:1.1em;">画面を更新（再読み込み）して、もう一度ログインしてください。</strong><br><br><span style="font-size:0.85em;color:#6b7280;">※何度更新してもこの画面が出る場合は、お使いのブラウザのセキュリティ制限が原因です。<a href="#" target="_blank" style="color:#2563eb;text-decoration:underline;">👉こちら</a>をクリックして一度Googleの画面を開いてから、再度更新してください。</span>`;
+      document.getElementById('error-card').classList.add('active');
+      document.getElementById('error-message-info').innerHTML = authMsg;
+    });
   </script>
 </body>
 
