@@ -865,6 +865,22 @@
     }
 
     /**
+     * GAS認証エラーを処理し、専用エラー画面を表示する
+     * @returns {boolean} エラーを処理した場合はtrue
+     */
+    function handleAuthError(error) {
+      if (error.message === 'GAS_AUTH_REQUIRED') {
+        const authMsg = `【セッション切れ】<br>長時間経過したため、安全のため通信が切断されました。<br><strong style="color:#dc2626; font-size:1.1em;">画面を更新（再読み込み）して、もう一度ログインしてください。</strong><br><br><span style="font-size:0.85em;color:#6b7280;">※何度更新してもこの画面が出る場合は、お使いのブラウザのセキュリティ制限が原因です。<a href="${GAS_API_URL}" target="_blank" style="color:#2563eb;text-decoration:underline;">こちら</a>をクリックして一度Googleの画面を開いてから、再度更新してください。</span>`;
+        document.querySelectorAll('.card').forEach((c) => c.classList.remove('active'));
+        document.getElementById('error-card').classList.add('active');
+        document.getElementById('error-message-info').innerHTML = authMsg;
+        return true;
+      }
+      return false;
+    }
+
+
+    /**
      * GASのバックエンドAPIに通信 (汎用)
      */
     async function callGasApi(payload) {
@@ -934,13 +950,7 @@
         }
         return true; // 成功
       } catch (error) {
-        if (error.message === 'GAS_AUTH_REQUIRED') {
-          const authMsg = `【セッション切れ】<br>長時間経過したため、安全のため通信が切断されました。<br><strong style="color:#dc2626; font-size:1.1em;">画面を更新（再読み込み）して、もう一度ログインしてください。</strong><br><br><span style="font-size:0.85em;color:#6b7280;">※何度更新してもこの画面が出る場合は、お使いのブラウザのセキュリティ制限が原因です。<a href="${GAS_API_URL}" target="_blank" style="color:#2563eb;text-decoration:underline;">こちら</a>をクリックして一度Googleの画面を開いてから、再度更新してください。</span>`;
-          document.getElementById('login-card').classList.remove('active');
-          document.getElementById('error-card').classList.add('active');
-          document.getElementById('error-message-info').innerHTML = authMsg;
-          showAdminMessage('', false);
-        } else {
+        if (!handleAuthError(error)) {
           alert('ステータス確認に失敗しました: ' + error.message);
         }
         return false; // 失敗
@@ -997,7 +1007,9 @@
           btn.style.color = '#991b1b';
         }
       } catch (error) {
-        alert('削除に失敗しました: ' + error.message);
+        if (!handleAuthError(error)) {
+          alert('削除に失敗しました: ' + error.message);
+        }
         if (btn) {
           btn.innerText = originalText;
           btn.disabled = false;
@@ -1042,7 +1054,9 @@
         const data = await callGasApi({ action: 'syncMasterData' });
         showAdminMessage(data.message || '同期が完了しました。', true);
       } catch (error) {
-        showAdminMessage(error.message, false);
+        if (!handleAuthError(error)) {
+          showAdminMessage(error.message, false);
+        }
       } finally {
         setSyncLoading(false);
       }
@@ -1112,7 +1126,9 @@
             }, 500); // 0.5秒後に画面遷移API開始
           }, 1000); // まず1秒間「成功！」を見せる
         } catch (error) {
-          showAdminMessage(error.message, false);
+          if (!handleAuthError(error)) {
+            showAdminMessage(error.message, false);
+          }
           setAdminLoading(false);
           // エラーで弾かれた場合は、ファイル選択欄の表示をリセット（消去）する
           document.getElementById('fileInput').value = '';
@@ -1202,7 +1218,9 @@
         history.pushState(null, '', '#step2');
         renderStepFromHash();
       } catch (error) {
-        showMessage(error.message, false);
+        if (!handleAuthError(error)) {
+          showMessage(error.message, false);
+        }
       } finally {
         setLoading(false);
       }
