@@ -626,7 +626,7 @@
 
     // デプロイしたGAS（バックエンドAPI）のウェブアプリURL
     const GAS_API_URL =
-      'https://script.google.com/macros/s/AKfycbylj3eAZ8tP4xvE759P7pGIYQqoLhiZ-vUl-C062TLeBvkQprB6cbNosoaZlOQq9FHl/exec';
+      'https://script.google.com/macros/s/AKfycbx3F4coPPF-dAhQlLYMJRKRjdaUBMQgpwfil3tno-zzSy4OSpG03mV88_WbBEaS0rJ3/exec';
 
     // 選択可能な部門のリスト（ソースコード上で見えないようBase64難読化）
     const DEPARTMENTS = [
@@ -876,6 +876,13 @@
         document.getElementById('error-message-info').innerHTML = authMsg;
         return true;
       }
+      if (error.message === 'NETWORK_ERROR') {
+        const authMsg = `【通信エラー】<br>処理に時間がかかったか、通信が途切れたため中断されました。<br><strong style="color:#dc2626; font-size:1.1em;">通信環境の良い場所で、画面を更新（再読み込み）してもう一度お試しください。</strong><br><span style="font-size:0.9em;">※スマホの場合、処理中は画面をスリープ（暗く）させないようご注意ください。</span>`;
+        document.querySelectorAll('.card').forEach((c) => c.classList.remove('active'));
+        document.getElementById('error-card').classList.add('active');
+        document.getElementById('error-message-info').innerHTML = authMsg;
+        return true;
+      }
       return false;
     }
 
@@ -906,7 +913,7 @@
           error.name === 'SyntaxError' ||
           error.message.includes('Unexpected token')
         ) {
-          throw new Error('GAS_AUTH_REQUIRED');
+          throw new Error('NETWORK_ERROR');
         }
         throw error;
       }
