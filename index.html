@@ -1568,11 +1568,17 @@
       const eventName = document.getElementById('eventName').value.trim();
       const selectedDept = document.getElementById('deptSelect').value;
       const finalUsers = finalUsersToInvite;
-      let emails = finalUsers.filter((u) => !u.isCreator).map((u) => u.email);
-      const memberOptions = finalUsers.filter((u) => !u.isCreator).map((u) => ({
-        email: u.email,
-        isOwner: !!u.isOwner
-      }));
+      let emails = finalUsers
+        .filter((u) => !u.isCreator)
+        .map((u) => (u.email || '').trim())
+        .filter((e) => e.length > 0);
+      const memberOptions = finalUsers
+        .filter((u) => !u.isCreator)
+        .map((u) => ({
+          email: (u.email || '').trim(),
+          isOwner: !!u.isOwner
+        }))
+        .filter((m) => m.email.length > 0);
 
       const btnText = document.getElementById('btn-text-final');
       const spinner = document.getElementById('spinner-final');
