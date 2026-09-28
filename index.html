@@ -639,9 +639,9 @@
       decodeURIComponent(escape(atob('5YWo6LKs5Lu76ICF'))),
     ];
 
-    // Google Chat API を叩くために必要なスコープ群（削除権限 chat.spaces、メッセージ投稿権限 chat.messages も追加）
+    // Google Chat API および Gmail 送信に必要なスコープ群（解決策1: 作成者Gmailからの招待メール自動送信用に gmail.send を追加）
     const SCOPES =
-      'https://www.googleapis.com/auth/chat.spaces https://www.googleapis.com/auth/chat.spaces.create https://www.googleapis.com/auth/chat.memberships https://www.googleapis.com/auth/chat.messages https://www.googleapis.com/auth/userinfo.email';
+      'https://www.googleapis.com/auth/chat.spaces https://www.googleapis.com/auth/chat.spaces.create https://www.googleapis.com/auth/chat.memberships https://www.googleapis.com/auth/chat.messages https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.send';
 
     let accessToken = null;
     let tokenClient;
@@ -1464,6 +1464,100 @@
       }
     });
 
+    /**
+     * 文字列をUTF-8バイト列にしてBase64エンコードする
+     */
+    function utf8ToBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+
+    /**
+     * Base64文字列をURL-safe Base64に変換する
+     */
+    function base64ToUrlSafe(b64) {
+      return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    /**
+     * RFC 2822 / MIME形式のメールメッセージを作成し、URL-safe Base64文字列で返す
+     */
+    function createRawEmail({ to, bcc, subject, body }) {
+      const encodedSubject = `=?UTF-8?B?${utf8ToBase64(subject)}?=`;
+      const encodedBody = utf8ToBase64(body);
+
+      const lines = [
+        `From: ${to}`,
+        `To: ${to}`,
+        ...(bcc ? [`Bcc: ${bcc}`] : []),
+        `Subject: ${encodedSubject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        encodedBody
+      ];
+
+      const emailRawString = lines.join('\r\n');
+      return base64ToUrlSafe(utf8ToBase64(emailRawString));
+    }
+
+    /**
+     * Gmail REST API: 作成者本人のGmailから招待案内メールを一斉送信（解決策1: 全自動Gmail連携）
+     * - GASの制限枠を消費せず、作成者本人のGmailアカウントから直接送信
+     * - BCCで一斉送信するためメンバー間の個人情報（アドレス）が保護される
+     * - Gmailの送信上限を考慮し、最大40件ずつ分割バッチ送信
+     */
+    async function sendInvitationEmailViaGmail(cleanSpaceId, spaceNameStr, targetEmails, creatorEmail) {
+      if (!targetEmails || targetEmails.length === 0) {
+        return { success: true, count: 0 };
+      }
+
+      const subject = `【ご案内】Google Chatスペース「${spaceNameStr}」へのご参加`;
+      const body = `お疲れ様です。\n${spaceNameStr} のGoogle Chatスペースを作成しました。\n\n以下のリンクからご参加ください：\nhttps://chat.google.com/room/${cleanSpaceId}\n\n※本メールは、スペース作成者（${creatorEmail}）より自動送信されています。`;
+
+      const BATCH_SIZE = 40;
+      let totalSent = 0;
+
+      for (let i = 0; i < targetEmails.length; i += BATCH_SIZE) {
+        const chunk = targetEmails.slice(i, i + BATCH_SIZE);
+        const bcc = chunk.join(',');
+
+        const raw = createRawEmail({
+          to: creatorEmail,
+          bcc: bcc,
+          subject: subject,
+          body: body
+        });
+
+        const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ raw: raw })
+        });
+
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          throw new Error(`Gmail送信失敗 (${response.status}): ${errJson.error?.message || response.statusText}`);
+        }
+
+        totalSent += chunk.length;
+        if (i + BATCH_SIZE < targetEmails.length) {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+
+      return { success: true, count: totalSent };
+    }
+
     async function executeSpaceCreation() {
       if (isExecutingSpace) return;
       isExecutingSpace = true;
@@ -1520,7 +1614,7 @@
         // バックグラウンド処理に移行したため、タブ閉じ警告を解除
         window.allowBackgroundExecution = true;
 
-        // 3. GASにバックグラウンド処理を丸投げ
+        // 3. GASにバックグラウンド処理を丸投げ（Chatメンバー招待処理等）
         const response = await callGasApi({
           action: 'inviteAndNotifyAsynchronously',
           spaceResourceName: createdSpace.name,
@@ -1529,17 +1623,29 @@
           accessToken: accessToken
         });
 
-        // 4. 完了時（画面を開いたまま待ってくれた場合）、既存の完了画面の中身をアップデートする
+        // 4. 作成者本人のGmailから招待メールを一斉送信（解決策1: 全自動Gmail連携）
         const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
         const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
         const failedEmails = response.failedEmails || [];
 
+        let mailStatusMsg = '';
+        try {
+          if (emails.length > 0) {
+            const mailResult = await sendInvitationEmailViaGmail(cleanSpaceId, spaceNameStr, emails, currentUserEmail);
+            mailStatusMsg = `\n\n【招待メール送信】\n作成者（${currentUserEmail}）のGmailより、対象メンバー全員（${mailResult.count}名）へ案内メールを自動送信しました。`;
+          }
+        } catch (mailError) {
+          console.error('Gmail API送信エラー:', mailError);
+          mailStatusMsg = `\n\n【⚠案内メール自動送信エラー】\n作成者のGmailからの自動案内メール送信に失敗しました（${mailError.message}）。お手数ですが、上記のスペースURLを直接メンバーへ共有してください。`;
+        }
+
+        // 5. 完了時（画面を開いたまま待ってくれた場合）、既存の完了画面の中身をアップデートする
         let warningMsg = '';
         if (failedEmails.length > 0) {
           warningMsg = `\n\n【⚠警告: 一部のメンバーが招待できませんでした】\n以下のメンバーは追加に失敗しました。詳細は結果報告メールをご確認の上、手動で追加してください。\n${failedEmails.join('\n')}`;
         }
 
-        const successMsg = `スペースの作成、メンバーの招待、および通知（チャット・メール）が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>${warningMsg}`;
+        const successMsg = `スペースの作成、メンバーの招待、および案内メール送信が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>${warningMsg}${mailStatusMsg}`;
 
         const isPartialError = failedEmails.length > 0;
         document.getElementById('result-title').innerText = isPartialError ? '作成完了（一部エラーあり）' : '作成＆招待 成功';
