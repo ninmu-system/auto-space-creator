@@ -1591,7 +1591,7 @@
       }
 
       const subject = `【ご案内】Google Chatスペース「${spaceNameStr}」へのご参加`;
-      const body = `お疲れ様です。\n${spaceNameStr} のGoogle Chatスペースを作成しました。\n\n以下のリンクからご参加ください：\nhttps://chat.google.com/room/${cleanSpaceId}\n\n※本メールは、スペース作成者（${creatorEmail}）より自動送信されています。`;
+      const body = `お疲れ様です。\n${spaceNameStr} のGoogle Chatスペースを作成しました。\n\n以下のリンクからご参加ください：\nhttps://chat.google.com/room/${cleanSpaceId}\n\n※現在システムによるメンバー登録処理中のため、万が一「アクセス権がありません」や「スペースが見つかりません」と表示された場合は、1分ほど待ってから再度リンクをお開きください。\n\n※本メールは、スペース作成者（${creatorEmail}）より自動送信されています。`;
 
       const BATCH_SIZE = 40;
       let totalSent = 0;
