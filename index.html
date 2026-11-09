@@ -529,6 +529,28 @@
             style="width: 0%; height: 100%; background-color: #2563eb; transition: width 0.3s ease;"></div>
         </div>
       </div>
+
+      <!-- 要件④: すでにスペースが作成済みの場合のリカバリー（Google Chat APIで検知＆招待メールのみ送信） -->
+      <div id="existing-space-recovery-box"
+        style="margin-top: 16px; padding: 12px; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; text-align: center;">
+        <button id="detectExistingSpaceBtn" type="button" onclick="detectExistingSpaceForMailOnly()"
+          style="background-color: #475569; font-size: 0.9rem; padding: 10px 12px; margin-top: 0;">
+          <span id="detect-space-btn-text">スペース作成済みの場合はここを押してください</span>
+          <div class="spinner" id="detect-space-spinner"></div>
+        </button>
+        <div id="existing-space-detected-area" style="display: none; margin-top: 12px; text-align: left;">
+          <p id="existing-space-status-text"
+            style="font-size: 0.85rem; font-weight: bold; color: #1e293b; margin: 0 0 8px 0; line-height: 1.5;"></p>
+          <select id="existingSpaceSelect" style="margin-bottom: 10px; font-size: 0.9rem;"></select>
+          <button id="sendMailOnlyBtn" type="button" onclick="executeMailOnlyForExistingSpace()"
+            style="background-color: #059669; font-size: 0.95rem; padding: 10px 12px; margin-top: 0;">
+            <span id="send-mail-only-btn-text">招待メールだけ送信する</span>
+            <div class="spinner" id="send-mail-only-spinner"></div>
+          </button>
+        </div>
+        <div id="existingSpaceMessage" class="message" style="text-align: left;"></div>
+      </div>
+
       <div id="nav-links-final" style="text-align: center; margin-top: 15px; font-size: 0.9em;">
         <a href="#" onclick="backToManualInvites(); return false;"
           style="color: #6b7280; text-decoration: underline; margin-right: 15px;">前に戻る</a>
@@ -549,6 +571,20 @@
             white-space: pre-wrap;
             word-break: break-all;
           "></p>
+
+      <!-- 要件③: 完了画面で手動で案内メールを送信（再送）できるボタン -->
+      <div id="manual-mail-result-area"
+        style="display: none; margin-bottom: 16px; padding: 12px; background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 8px 0;">
+          ※万が一案内メールが未送信の場合や、手動で再送信したい場合はこちらを押してください
+        </p>
+        <button id="manualResendMailBtn" type="button" onclick="sendManualInvitationEmailFromResult()"
+          style="background-color: #059669; margin-top: 0;">
+          <span id="manual-resend-btn-text">案内メールを手動で送信する</span>
+          <div class="spinner" id="manual-resend-spinner"></div>
+        </button>
+        <div id="manualMailStatusMessage" class="message" style="text-align: left;"></div>
+      </div>
 
       <button onclick="resetSpaceCreation()">トップに戻る</button>
     </div>
@@ -1413,8 +1449,27 @@
         })
         .join('');
 
+      resetExistingSpaceRecoveryUI();
       history.pushState(null, '', '#step4');
       renderStepFromHash();
+    }
+
+    function resetExistingSpaceRecoveryUI() {
+      const detectedArea = document.getElementById('existing-space-detected-area');
+      const msgDiv = document.getElementById('existingSpaceMessage');
+      const selectEl = document.getElementById('existingSpaceSelect');
+      const detectBtn = document.getElementById('detectExistingSpaceBtn');
+      const detectText = document.getElementById('detect-space-btn-text');
+      const detectSpinner = document.getElementById('detect-space-spinner');
+      if (detectedArea) detectedArea.style.display = 'none';
+      if (msgDiv) {
+        msgDiv.innerText = '';
+        msgDiv.style.display = 'none';
+      }
+      if (selectEl) selectEl.innerHTML = '';
+      if (detectBtn) detectBtn.disabled = false;
+      if (detectText) detectText.style.display = 'inline';
+      if (detectSpinner) detectSpinner.style.display = 'none';
     }
 
     function resetSpaceCreation() {
@@ -1422,6 +1477,7 @@
         alert('現在処理中です。完了するまでしばらくお待ちください。');
         return;
       }
+      resetExistingSpaceRecoveryUI();
       history.pushState(null, '', '#step1');
       renderStepFromHash();
       document.getElementById('finalStatusMessage').innerHTML = '';
@@ -1437,7 +1493,9 @@
       history.back();
     }
 
-    function showResultScreen(isSuccess, title, desc) {
+    let lastInvitationContext = null; // 完了画面での手動送信（再送）用コンテキスト
+
+    function showResultScreen(isSuccess, title, desc, showManualMailBtn = false) {
       const resultDiv = document.getElementById('step-result');
 
       const successSvg = '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
@@ -1449,6 +1507,19 @@
         ? 'var(--primary-color)'
         : '#991B1B';
       document.getElementById('result-desc').innerHTML = desc;
+
+      const manualMailArea = document.getElementById('manual-mail-result-area');
+      const manualMailMsg = document.getElementById('manualMailStatusMessage');
+      if (manualMailMsg) {
+        manualMailMsg.innerText = '';
+        manualMailMsg.style.display = 'none';
+      }
+      if (manualMailArea) {
+        const hasRecipients = lastInvitationContext &&
+          Array.isArray(lastInvitationContext.emails) &&
+          lastInvitationContext.emails.some(e => e && e !== lastInvitationContext.creatorEmail);
+        manualMailArea.style.display = (showManualMailBtn && hasRecipients) ? 'block' : 'none';
+      }
 
       history.pushState(null, '', '#result');
       renderStepFromHash();
@@ -1486,14 +1557,14 @@
 
     /**
      * RFC 2822 / MIME形式のメールメッセージを作成し、URL-safe Base64文字列で返す
+     * - 作成者自身の受信トレイに届かないよう、Toには作成者を含めず Bcc のみで構築する
      */
-    function createRawEmail({ to, bcc, subject, body }) {
+    function createRawEmail({ from, bcc, subject, body }) {
       const encodedSubject = `=?UTF-8?B?${utf8ToBase64(subject)}?=`;
       const encodedBody = utf8ToBase64(body);
 
       const lines = [
-        `From: ${to}`,
-        `To: ${to}`,
+        `From: ${from}`,
         ...(bcc ? [`Bcc: ${bcc}`] : []),
         `Subject: ${encodedSubject}`,
         'MIME-Version: 1.0',
@@ -1510,11 +1581,12 @@
     /**
      * Gmail REST API: 作成者本人のGmailから招待案内メールを一斉送信（解決策1: 全自動Gmail連携）
      * - GASの制限枠を消費せず、作成者本人のGmailアカウントから直接送信
-     * - BCCで一斉送信するためメンバー間の個人情報（アドレス）が保護される
+     * - BCCのみで一斉送信するためメンバー間の個人情報（アドレス）が保護され、作成者自身の受信トレイにも届かない
      * - Gmailの送信上限を考慮し、最大40件ずつ分割バッチ送信
      */
     async function sendInvitationEmailViaGmail(cleanSpaceId, spaceNameStr, targetEmails, creatorEmail) {
-      if (!targetEmails || targetEmails.length === 0) {
+      const recipientEmails = (targetEmails || []).filter(e => e && e !== creatorEmail);
+      if (recipientEmails.length === 0) {
         return { success: true, count: 0 };
       }
 
@@ -1524,12 +1596,12 @@
       const BATCH_SIZE = 40;
       let totalSent = 0;
 
-      for (let i = 0; i < targetEmails.length; i += BATCH_SIZE) {
-        const chunk = targetEmails.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < recipientEmails.length; i += BATCH_SIZE) {
+        const chunk = recipientEmails.slice(i, i + BATCH_SIZE);
         const bcc = chunk.join(',');
 
         const raw = createRawEmail({
-          to: creatorEmail,
+          from: creatorEmail,
           bcc: bcc,
           subject: subject,
           body: body
@@ -1550,12 +1622,273 @@
         }
 
         totalSent += chunk.length;
-        if (i + BATCH_SIZE < targetEmails.length) {
+        if (i + BATCH_SIZE < recipientEmails.length) {
           await new Promise(r => setTimeout(r, 200));
         }
       }
 
       return { success: true, count: totalSent };
+    }
+
+    /**
+     * 要件③: 完了画面（ステップ5）から手動で案内メールを送信（再送）する
+     */
+    async function sendManualInvitationEmailFromResult() {
+      if (!lastInvitationContext || !lastInvitationContext.cleanSpaceId) {
+        alert('送信対象のスペース情報が見つかりません。');
+        return;
+      }
+      const { cleanSpaceId, spaceNameStr, emails, creatorEmail } = lastInvitationContext;
+      const targetCount = (emails || []).filter(e => e && e !== creatorEmail).length;
+      if (targetCount === 0) {
+        alert('送信対象のメンバーがいません。');
+        return;
+      }
+      if (!confirm(`スペース「${spaceNameStr}」の案内メールを対象メンバー（${targetCount}名）へ送信しますか？`)) {
+        return;
+      }
+
+      const btn = document.getElementById('manualResendMailBtn');
+      const btnText = document.getElementById('manual-resend-btn-text');
+      const spinner = document.getElementById('manual-resend-spinner');
+      const msgDiv = document.getElementById('manualMailStatusMessage');
+
+      if (btn) btn.disabled = true;
+      if (btnText) btnText.style.display = 'none';
+      if (spinner) spinner.style.display = 'block';
+      if (msgDiv) {
+        msgDiv.innerText = '';
+        msgDiv.style.display = 'none';
+      }
+
+      try {
+        const result = await sendInvitationEmailViaGmail(cleanSpaceId, spaceNameStr, emails, creatorEmail);
+        if (msgDiv) {
+          msgDiv.className = 'message success';
+          msgDiv.innerText = `作成者（${creatorEmail}）のGmailより、対象メンバー全員（${result.count}名）へ案内メールを送信しました！`;
+          msgDiv.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('手動案内メール送信エラー:', err);
+        if (msgDiv) {
+          msgDiv.className = 'message error';
+          msgDiv.innerText = `案内メールの送信に失敗しました: ${err.message}`;
+          msgDiv.style.display = 'block';
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.style.display = 'inline';
+        if (spinner) spinner.style.display = 'none';
+      }
+    }
+
+    /**
+     * 要件④: Google Chat APIでログイン者が参加・作成している既存スペースを検知する
+     */
+    async function detectExistingSpaceForMailOnly() {
+      if (isExecutingSpace) return;
+
+      const eventName = document.getElementById('eventName').value.trim();
+      const selectedDept = document.getElementById('deptSelect').value;
+      const expectedSpaceName = `【${eventName}】${selectedDept}`;
+
+      const detectBtn = document.getElementById('detectExistingSpaceBtn');
+      const detectText = document.getElementById('detect-space-btn-text');
+      const detectSpinner = document.getElementById('detect-space-spinner');
+      const detectedArea = document.getElementById('existing-space-detected-area');
+      const statusText = document.getElementById('existing-space-status-text');
+      const selectEl = document.getElementById('existingSpaceSelect');
+      const msgDiv = document.getElementById('existingSpaceMessage');
+
+      if (detectBtn) detectBtn.disabled = true;
+      if (detectText) detectText.style.display = 'none';
+      if (detectSpinner) detectSpinner.style.display = 'block';
+      if (detectedArea) detectedArea.style.display = 'none';
+      if (msgDiv) {
+        msgDiv.innerText = '';
+        msgDiv.style.display = 'none';
+      }
+
+      try {
+        let allSpaces = [];
+        let pageToken = '';
+        let pageCount = 0;
+
+        do {
+          const url = 'https://chat.googleapis.com/v1/spaces?pageSize=200' +
+            (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+
+          if (!response.ok) {
+            const errJson = await response.json().catch(() => ({}));
+            throw new Error(`スペース一覧の取得に失敗しました (${response.status}): ${errJson.error?.message || response.statusText}`);
+          }
+
+          const data = await response.json();
+          if (Array.isArray(data.spaces)) {
+            allSpaces = allSpaces.concat(data.spaces);
+          }
+          pageToken = data.nextPageToken || '';
+          pageCount++;
+        } while (pageToken && pageCount < 5);
+
+        // 名前付きスペース（SPACE）のみ抽出
+        const namedSpaces = allSpaces.filter(s => s && s.name && s.displayName);
+        if (namedSpaces.length === 0) {
+          throw new Error('作成済み（参加中）のGoogle Chatスペースが見つかりませんでした。');
+        }
+
+        const exactMatches = namedSpaces.filter(s => s.displayName.trim() === expectedSpaceName);
+        const otherSpaces = namedSpaces.filter(s => s.displayName.trim() !== expectedSpaceName);
+
+        selectEl.innerHTML = '';
+
+        if (exactMatches.length > 0) {
+          exactMatches.forEach((s, idx) => {
+            const cleanId = s.name.replace(/^spaces\//, '');
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.dataset.displayName = s.displayName;
+            opt.innerText = exactMatches.length > 1
+              ? `${s.displayName} (ID: ${cleanId})`
+              : `${s.displayName}`;
+            if (idx === 0) opt.selected = true;
+            selectEl.appendChild(opt);
+          });
+
+          if (otherSpaces.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = 'その他の参加中スペース';
+            otherSpaces.forEach(s => {
+              const cleanId = s.name.replace(/^spaces\//, '');
+              const opt = document.createElement('option');
+              opt.value = s.name;
+              opt.dataset.displayName = s.displayName;
+              opt.innerText = `${s.displayName} (ID: ${cleanId})`;
+              group.appendChild(opt);
+            });
+            selectEl.appendChild(group);
+          }
+
+          statusText.style.color = '#065f46';
+          statusText.innerText = `✅ 作成済みのスペース「${expectedSpaceName}」を検知しました！\n下のボタンを押すと、スペースを新規作成せずに招待メールだけを送信します。`;
+        } else {
+          namedSpaces.forEach((s, idx) => {
+            const cleanId = s.name.replace(/^spaces\//, '');
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.dataset.displayName = s.displayName;
+            opt.innerText = `${s.displayName} (ID: ${cleanId})`;
+            if (idx === 0) opt.selected = true;
+            selectEl.appendChild(opt);
+          });
+
+          statusText.style.color = '#92400e';
+          statusText.innerText = `※「${expectedSpaceName}」と完全一致するスペースは見つかりませんでしたが、以下の作成済みスペースを選択して招待メールだけを送信できます。`;
+        }
+
+        if (detectedArea) detectedArea.style.display = 'block';
+      } catch (err) {
+        console.error('既存スペース検知エラー:', err);
+        if (msgDiv) {
+          msgDiv.className = 'message error';
+          msgDiv.innerText = err.message;
+          msgDiv.style.display = 'block';
+        }
+      } finally {
+        if (detectBtn) detectBtn.disabled = false;
+        if (detectText) detectText.style.display = 'inline';
+        if (detectSpinner) detectSpinner.style.display = 'none';
+      }
+    }
+
+    /**
+     * 要件④: 検知した既存スペースに対して、招待メールだけを一斉送信する
+     */
+    async function executeMailOnlyForExistingSpace() {
+      if (isExecutingSpace) return;
+
+      const selectEl = document.getElementById('existingSpaceSelect');
+      if (!selectEl || !selectEl.value) {
+        alert('対象スペースを選択してください。');
+        return;
+      }
+
+      const selectedOption = selectEl.options[selectEl.selectedIndex];
+      const spaceResourceName = selectEl.value;
+      const spaceNameStr = (selectedOption && selectedOption.dataset.displayName)
+        ? selectedOption.dataset.displayName
+        : document.getElementById('eventName').value.trim();
+      const cleanSpaceId = spaceResourceName.startsWith('spaces/')
+        ? spaceResourceName.replace('spaces/', '')
+        : spaceResourceName;
+      const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
+
+      const emails = finalUsersToInvite
+        .filter(u => !u.isCreator)
+        .map(u => (u.email || '').trim())
+        .filter(e => e && e !== currentUserEmail);
+
+      if (emails.length === 0) {
+        alert('送信対象のメンバーがいません。');
+        return;
+      }
+
+      if (!confirm(`作成済みスペース「${spaceNameStr}」の招待メールのみを、対象メンバー（${emails.length}名）へ一斉送信しますか？\n（※スペースの新規作成は行いません）`)) {
+        return;
+      }
+
+      isExecutingSpace = true;
+      const sendBtn = document.getElementById('sendMailOnlyBtn');
+      const sendText = document.getElementById('send-mail-only-btn-text');
+      const sendSpinner = document.getElementById('send-mail-only-spinner');
+      const executeBtn = document.getElementById('executeBtn');
+      const msgDiv = document.getElementById('existingSpaceMessage');
+
+      if (sendBtn) sendBtn.disabled = true;
+      if (executeBtn) executeBtn.disabled = true;
+      if (sendText) sendText.style.display = 'none';
+      if (sendSpinner) sendSpinner.style.display = 'block';
+      if (msgDiv) {
+        msgDiv.innerText = '';
+        msgDiv.style.display = 'none';
+      }
+
+      lastInvitationContext = {
+        cleanSpaceId: cleanSpaceId,
+        spaceNameStr: spaceNameStr,
+        emails: emails,
+        creatorEmail: currentUserEmail
+      };
+
+      try {
+        const mailResult = await sendInvitationEmailViaGmail(cleanSpaceId, spaceNameStr, emails, currentUserEmail);
+        const resultMsg =
+          `作成済みスペースへの招待メール送信が完了しました！\n（※スペースの新規作成はスキップされました）\n\n` +
+          `▼対象のスペースはこちら\n` +
+          `<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${escapeHtml(spaceNameStr)}</a>\n\n` +
+          `【招待メール送信】\n作成者（${escapeHtml(currentUserEmail)}）のGmailより、対象メンバー全員（${mailResult.count}名）へ案内メールを送信しました。`;
+
+        showResultScreen(true, '招待メール送信完了', resultMsg.replace(/\n/g, '<br>'), true);
+      } catch (err) {
+        console.error('招待メールのみ送信エラー:', err);
+        if (msgDiv) {
+          msgDiv.className = 'message error';
+          msgDiv.innerText = `招待メールの送信に失敗しました: ${err.message}`;
+          msgDiv.style.display = 'block';
+        }
+      } finally {
+        isExecutingSpace = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (executeBtn) executeBtn.disabled = false;
+        if (sendText) sendText.style.display = 'inline';
+        if (sendSpinner) sendSpinner.style.display = 'none';
+      }
     }
 
     async function executeSpaceCreation() {
@@ -1571,7 +1904,7 @@
       let emails = finalUsers
         .filter((u) => !u.isCreator)
         .map((u) => (u.email || '').trim())
-        .filter((e) => e.length > 0);
+        .filter((e) => e.length > 0 && e !== currentUserEmail);
       const memberOptions = finalUsers
         .filter((u) => !u.isCreator)
         .map((u) => ({
@@ -1604,36 +1937,22 @@
         // 1. スペース作成API呼び出し
         updateProgress('スペース枠組み作成中...', 0, 100);
         createdSpace = await createChatSpaceDirectly(spaceNameStr);
-        updateProgress('スペース作成完了！', 100, 100);
 
-        // 2. 完了画面に遷移させ、「作成完了・招待開始」として表示
-        const waitingHtml = '<div class="info-box">' +
-          '※ このページで待つと、招待完了時にお知らせします。<br>' +
-          '※ ページを閉じても裏側で処理は続行されます。<br>' +
-          '※ 万が一エラーがあった場合はメールに通知します。' +
-          '<div id="async-spinner-container" style="text-align:center; margin-top:20px;">' +
-          '<div class="spinner" style="display:block; margin:0 auto; width:22px; height:22px; border-width:3px; border-color:var(--primary-color); border-bottom-color:transparent;"></div>' +
-          '<span style="display:block; font-size:0.95em; margin-top:8px;">サーバーで処理中...</span>' +
-          '</div></div>';
-        showResultScreen(true, '作成完了・招待開始', waitingHtml);
-
-        // バックグラウンド処理に移行したため、タブ閉じ警告を解除
-        window.allowBackgroundExecution = true;
-
-        // 3. GASにバックグラウンド処理を丸投げ（Chatメンバー招待処理等）
-        const response = await callGasApi({
-          action: 'inviteAndNotifyAsynchronously',
-          spaceResourceName: createdSpace.name,
-          spaceNameStr: spaceNameStr,
-          members: memberOptions,
-          accessToken: accessToken
-        });
-
-        // 4. 作成者本人のGmailから招待メールを一斉送信（解決策1: 全自動Gmail連携）
-        const cleanSpaceId = createdSpace.name.startsWith("spaces/") ? createdSpace.name.replace("spaces/", "") : createdSpace.name;
+        const cleanSpaceId = createdSpace.name.startsWith("spaces/")
+          ? createdSpace.name.replace("spaces/", "")
+          : createdSpace.name;
         const spaceUrl = `https://chat.google.com/room/${cleanSpaceId}`;
-        const failedEmails = response.failedEmails || [];
 
+        // 完了画面での手動送信（再送）用にコンテキストを保存
+        lastInvitationContext = {
+          cleanSpaceId: cleanSpaceId,
+          spaceNameStr: spaceNameStr,
+          emails: emails,
+          creatorEmail: currentUserEmail
+        };
+
+        // 2. 要件②: スペース作成直後に作成者本人のGmailから招待メールを一斉送信
+        updateProgress('スペース作成完了！案内メールを自動送信中...', 50, 100);
         let mailStatusMsg = '';
         try {
           if (emails.length > 0) {
@@ -1642,39 +1961,72 @@
           }
         } catch (mailError) {
           console.error('Gmail API送信エラー:', mailError);
-          mailStatusMsg = `\n\n【⚠案内メール自動送信エラー】\n作成者のGmailからの自動案内メール送信に失敗しました（${mailError.message}）。お手数ですが、上記のスペースURLを直接メンバーへ共有してください。`;
+          mailStatusMsg = `\n\n【⚠案内メール自動送信エラー】\n自動送信に失敗しました（${mailError.message}）。下の「案内メールを手動で送信する」ボタンから再送するか、上記のスペースURLを直接共有してください。`;
         }
+        updateProgress('案内メール送信完了！メンバー招待を開始します...', 100, 100);
 
-        // 5. 完了時（画面を開いたまま待ってくれた場合）、既存の完了画面の中身をアップデートする
-        let warningMsg = '';
-        if (failedEmails.length > 0) {
-          warningMsg = `\n\n【⚠警告: 一部のメンバーが招待できませんでした】\n以下のメンバーは追加に失敗しました。詳細は結果報告メールをご確認の上、手動で追加してください。\n${failedEmails.join('\n')}`;
+        // 3. 完了画面に遷移させ、「作成・案内メール送信完了（招待処理中）」として表示
+        const waitingHtml =
+          `▼作成されたスペースはこちら<br>` +
+          `<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${escapeHtml(spaceNameStr)}</a>` +
+          `${mailStatusMsg.replace(/\n/g, '<br>')}` +
+          `<div class="info-box">` +
+          `※ スペースの作成と案内メール送信は完了しました！<br>` +
+          `※ 現在サーバー側でメンバーをスペースへ順次追加しています。<br>` +
+          `※ ページを閉じても裏側で処理は続行され、完了後に結果報告メールが届きます。` +
+          `<div id="async-spinner-container" style="text-align:center; margin-top:20px;">` +
+          `<div class="spinner" style="display:block; margin:0 auto; width:22px; height:22px; border-width:3px; border-color:var(--primary-color); border-bottom-color:transparent;"></div>` +
+          `<span style="display:block; font-size:0.95em; margin-top:8px;">サーバーでメンバー追加中...</span>` +
+          `</div></div>`;
+        showResultScreen(true, '作成完了・招待開始', waitingHtml, true);
+
+        // バックグラウンド処理に移行したため、タブ閉じ警告を解除
+        window.allowBackgroundExecution = true;
+
+        // 4. GASにバックグラウンド処理を丸投げ（Chatメンバー招待処理等）
+        try {
+          const response = await callGasApi({
+            action: 'inviteAndNotifyAsynchronously',
+            spaceResourceName: createdSpace.name,
+            spaceNameStr: spaceNameStr,
+            members: memberOptions,
+            accessToken: accessToken
+          });
+
+          const failedEmails = response.failedEmails || [];
+
+          // 5. 完了時（画面を開いたまま待ってくれた場合）、既存の完了画面の中身をアップデートする
+          let warningMsg = '';
+          if (failedEmails.length > 0) {
+            warningMsg = `\n\n【⚠警告: 一部のメンバーが招待できませんでした】\n以下のメンバーは追加に失敗しました。詳細は結果報告メールをご確認の上、手動で追加してください。\n${failedEmails.join('\n')}`;
+          }
+
+          const successMsg = `スペースの作成、メンバーの招待、および案内メール送信が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${escapeHtml(spaceNameStr)}</a>${warningMsg}${mailStatusMsg}`;
+
+          const isPartialError = failedEmails.length > 0;
+          document.getElementById('result-title').innerText = isPartialError ? '作成完了（一部エラーあり）' : '作成＆招待 成功';
+          document.getElementById('result-title').style.color = isPartialError ? '#991B1B' : 'var(--primary-color)';
+          document.getElementById('result-desc').innerHTML = successMsg.replace(/\n/g, '<br>');
+        } catch (gasError) {
+          // 要件①: スペース作成後のGAS待機中に通信が切れた場合でも、スペース削除や誤ったエラー通知を行わない
+          console.warn('GAS待機中の通信切断またはエラー:', gasError);
+          const backgroundNotice =
+            `スペースの作成および案内メールの送信は完了しています。\n\n` +
+            `▼作成されたスペースはこちら\n` +
+            `<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${escapeHtml(spaceNameStr)}</a>` +
+            `${mailStatusMsg}\n\n` +
+            `※待機中にブラウザとの通信が切れましたが、裏側のサーバー（GAS）でメンバー追加処理はそのまま続行されています。最終的な追加結果は完了報告メールをご確認ください。`;
+          document.getElementById('result-title').innerText = '作成・案内メール送信完了';
+          document.getElementById('result-title').style.color = 'var(--primary-color)';
+          document.getElementById('result-desc').innerHTML = backgroundNotice.replace(/\n/g, '<br>');
         }
-
-        const successMsg = `スペースの作成、メンバーの招待、および案内メール送信が完了しました！\n\n▼作成されたスペースはこちら\n<a href="${spaceUrl}" target="_blank" style="font-weight:bold; font-size:1.1em; color:#2563eb; text-decoration:underline;">${spaceNameStr}</a>${warningMsg}${mailStatusMsg}`;
-
-        const isPartialError = failedEmails.length > 0;
-        document.getElementById('result-title').innerText = isPartialError ? '作成完了（一部エラーあり）' : '作成＆招待 成功';
-        document.getElementById('result-title').style.color = isPartialError ? '#991B1B' : 'var(--primary-color)';
-        document.getElementById('result-desc').innerHTML = successMsg.replace(/\n/g, '<br>');
       } catch (error) {
-        // エラー時のロールバックと画面遷移
+        // スペース作成自体に失敗した場合のエラーハンドリング（スペース削除コードは撤去）
         console.error('Execution Error:', error);
 
-        let errorDesc =
-          '申し訳ありません。処理中にエラーが発生しました。\n\n詳細: ' +
+        const errorDesc =
+          '申し訳ありません。スペース作成中にエラーが発生しました。\n\n詳細: ' +
           error.message;
-
-        // スペースが作成されていた場合はロールバック（削除）を試みる
-        if (createdSpace && createdSpace.name) {
-          try {
-            await deleteChatSpaceDirectly(createdSpace.name);
-            errorDesc +=
-              '\n\n※一部のメンバーの招待に失敗したため、作成されたスペースは自動的に取り消し（削除）されました。';
-          } catch (rollbackError) {
-            errorDesc += `\n\n※一部のメンバーの招待に失敗しましたが、スペースの自動削除にも失敗しました。お手数ですがGoogle Chatから手動でスペース「${createdSpace.displayName}」を削除してください。`;
-          }
-        }
 
         // エラーログをGASへ送信して管理者に通知（非同期で実行）
         callGasApi({
@@ -1682,7 +2034,7 @@
           errorLog: errorDesc
         }).catch(e => console.error('エラーログの送信にも失敗しました', e));
 
-        showResultScreen(false, 'エラーが発生しました', errorDesc);
+        showResultScreen(false, 'エラーが発生しました', errorDesc, false);
       } finally {
         isExecutingSpace = false;
         const executeBtn = document.getElementById('executeBtn');
@@ -1718,24 +2070,6 @@
         );
       }
       return await response.json();
-    }
-
-    /**
-     * Google Chat REST API: スペース削除（ロールバック用）
-     */
-    async function deleteChatSpaceDirectly(spaceResourceName) {
-      const response = await fetch(
-        `https://chat.googleapis.com/v1/${spaceResourceName}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-      if (!response.ok) {
-        throw new Error('スペースの削除に失敗しました。');
-      }
     }
 
     /**
